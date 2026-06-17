@@ -1,111 +1,70 @@
 # QryEval_PLUS
 
-This repository expects several large or externally maintained assets under
-`INPUT_DIR/`. Those files are intentionally not committed: they are either
-downloadable from upstream projects, course-provided data, or generated indexes.
+QryEval_PLUS is a modular retrieval, reranking, and RAG QA framework. It connects traditional information retrieval, neural retrieval, learning-to-rank, BERT reranking, and LLM-based answer generation in a configurable experiment pipeline.
 
-Create the directory after cloning:
+## Pipeline
 
-```sh
-mkdir -p INPUT_DIR
-```
-
-## Required input layout
-
-`helloHW5.py` currently expects these paths:
+The project runs experiments as ordered stages declared in JSON `.param` files:
 
 ```text
-INPUT_DIR/index-cw22b-wp/
-INPUT_DIR/index-cw22b-wp-faiss-b300-Fp
-INPUT_DIR/co-condenser-marco-retriever/
+ranker -> rewriter -> reranker -> agent -> output
 ```
 
-`index-cw22b-wp/` is a Lucene index and `index-cw22b-wp-faiss-b300-Fp` is a
-matching FAISS dense-vector index. These appear to be course/local generated
-artifacts rather than public model checkpoints. Recreate them from the course
-corpus and indexing pipeline, or copy them from the course-provided input
-package, keeping the same filenames.
+- `ranker`: builds an initial ranking from BM25, Boolean retrieval, existing run files, or FAISS dense retrieval.
+- `rewriter`: expands queries with pseudo relevance feedback, including RM3-style weighted queries.
+- `reranker`: rescores top documents with Learning-to-Rank or BERT cross-encoder models.
+- `agent`: performs retrieval-augmented answer generation by selecting evidence passages and calling an LLM server.
+- `output`: writes TREC evaluation runs or TriviaQA-style answer files.
 
-## Downloadable models
+## Project Highlights
 
-Install the Hugging Face CLI if needed:
+- Implements sparse retrieval with Boolean models and BM25 over Lucene indexes.
+- Adds pseudo relevance feedback for query expansion.
+- Provides a hot-pluggable Learning-to-Rank reranker with RankLib/SVMRank backends and 20 ranking features.
+- Integrates HuggingFace dense encoders with FAISS for neural first-stage retrieval.
+- Supports BERT cross-encoder reranking with passage windows and aggregation strategies.
+- Includes a RAG agent stage that retrieves documents, selects passages, builds grounded prompts, and produces QA answers.
 
-```sh
-python -m pip install -U huggingface_hub
-```
-
-Download the dense retriever used by `helloHW5.py`:
-
-```sh
-huggingface-cli download Luyu/co-condenser-marco-retriever \
-  --local-dir INPUT_DIR/co-condenser-marco-retriever \
-  --local-dir-use-symlinks False
-```
-
-Source: https://huggingface.co/Luyu/co-condenser-marco-retriever
-
-Optional reranker checkpoints that have appeared in local `INPUT_DIR` copies:
-
-```sh
-huggingface-cli download cross-encoder/ms-marco-MiniLM-L6-v2 \
-  --local-dir INPUT_DIR/ms-marco-MiniLM-L-6-v2 \
-  --local-dir-use-symlinks False
-
-huggingface-cli download cross-encoder/ms-marco-MiniLM-L12-v2 \
-  --local-dir INPUT_DIR/ms-marco-MiniLM-L-12-v2 \
-  --local-dir-use-symlinks False
-```
-
-Sources:
-
-- https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2
-- https://huggingface.co/cross-encoder/ms-marco-MiniLM-L12-v2
-
-## Evaluation data and tools
-
-TriviaQA data and evaluation code:
-
-- Official data page: https://nlp.cs.washington.edu/triviaqa/
-- Official code: https://github.com/mandarjoshi90/triviaqa
-
-If an experiment expects these local files, download TriviaQA v1.0 from the
-official page and copy or generate the needed files under:
+## Directory Structure
 
 ```text
-INPUT_DIR/triviaqa_evaluation/
-INPUT_DIR/verified-wikipedia-dev.qrel
+qryeval_plus/
+  core/       Index access, Lucene bridge, utilities, timers, rankings
+  query/      Query parser and structured query operators
+  retrieval/  First-stage sparse and dense rankers
+  rewrite/    Query rewriting and pseudo relevance feedback
+  rerank/     LTR and BERT reranking stages
+  rag/        RAG agent, prompt builder, passage builder
+  io/         TREC and QA output writers
+  scripts/    Utility and demo scripts
 ```
 
-`verified-wikipedia-dev.qrel` is not part of the standard TriviaQA download; it
-is a qrel-style conversion used by this project/course setup. Regenerate it from
-the verified Wikipedia dev split if your experiment needs it.
+Root-level `QryEval.py` and `helloHW5.py` are compatibility wrappers so the original commands still work.
 
-TREC evaluation:
+## Usage
 
-- Source: https://github.com/usnistgov/trec_eval
-
-Build from source and place the compiled executable where legacy parameters
-expect it:
+Run an experiment from the project root:
 
 ```sh
-git clone https://github.com/usnistgov/trec_eval /tmp/trec_eval
-make -C /tmp/trec_eval
-cp /tmp/trec_eval/trec_eval INPUT_DIR/trec_eval-9.0.4
+python QryEval.py <paramFile>
 ```
 
-SVMrank binaries:
+For example:
 
-- Source: https://www.cs.cornell.edu/people/tj/svm_light/svm_rank.html
-
-Download or build platform-appropriate binaries, then place them at:
-
-```text
-INPUT_DIR/svm_rank_learn
-INPUT_DIR/svm_rank_classify
+```sh
+python QryEval.py HW-backup/HW5-Exp-1.1a.param
 ```
 
-## Ignored local assets
+The HW5 demo wrapper is also preserved:
 
-The repo ignores `INPUT_DIR/*` so large downloaded files, generated indexes,
-compiled tools, and local course data do not get committed. Keep only source
-code, parameter files, and documentation in git.
+```sh
+python helloHW5.py
+```
+
+## Input Assets
+
+Large indexes, models, evaluation data, and external tools are intentionally kept out of git. See [INPUT_DIR/INPUT_README.md](INPUT_DIR/INPUT_README.md) for the expected input layout and download instructions.
+
+## Resume Framing
+
+This project can be presented as a retrieval-augmented QA system and evaluation framework. It demonstrates AI agent-relevant skills across retrieval orchestration, tool-style pipeline stages, evidence selection, prompt construction, ranking evaluation, and grounded answer generation.
