@@ -1,0 +1,6 @@
+numpy>=1.23
+torch>=2.0
+transformers>=4.30
+huggingface_hub>=0.20
+pyjnius>=1.5
+faiss-cpu>=1.7
