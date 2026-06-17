@@ -1,1 +1,5 @@
 HW-backup/
+
+# Local data, indexes, downloaded models, and external binaries.
+INPUT_DIR/*
+!INPUT_DIR/.gitkeep
