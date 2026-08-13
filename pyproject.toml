@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qryeval-plus"
+version = "0.2.0"
+description = "Configurable information retrieval, reranking, and RAG experiments"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+dependencies = [
+  "numpy>=1.23",
+  "torch>=2.0",
+  "transformers>=4.12",
+  "huggingface-hub>=0.20",
+  "pyjnius>=1.5",
+  "faiss-cpu>=1.7",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0", "build>=1.0"]
+
+[project.scripts]
+qryeval = "qryeval_plus.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+qryeval_plus = ["vendor/java/*.jar"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["integration: uses local indexes and neural model checkpoints"]

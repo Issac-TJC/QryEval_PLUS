@@ -1,0 +1,41 @@
+{
+  "indexPath": "../../../data/indexes/clueweb22-lucene",
+  "queryFilePath": "../../../datasets/triviaqa/verified_wikipedia_dev.qry",
+  "task_1:ranker": {
+    "type": "dense",
+    "outputLength": 1000,
+    "dense:indexPath": "../../../data/indexes/clueweb22-faiss-b300-fp",
+    "dense:modelPath": "../../../data/models/co-condenser-marco-retriever"
+  },
+  "task_2:reranker": {
+    "type": "bertrr",
+    "rerankDepth": 25,
+    "bertrr:modelPath": "../../../data/models/ms-marco-minilm-l12-v2",
+    "bertrr:psgLen": 150,
+    "bertrr:psgStride": 140,
+    "bertrr:psgCnt": 3,
+    "bertrr:scoreAggregation": "maxp",
+    "bertrr:maxTitleLength": 15
+  },
+  "task_3:output": {
+    "type": "trec_eval",
+    "outputPath": "../../../outputs/rag/systems/dense_minilm_l12_rerank.run",
+    "outputLength": 1000
+  },
+  "task_4:agent": {
+    "type": "rag",
+    "agentDepth": 5,
+    "rag:dense:modelPath": "../../../data/models/co-condenser-marco-retriever",
+    "rag:psgLen": 150,
+    "rag:psgStride": 140,
+    "rag:psgCnt": 6,
+    "rag:maxTitleLength": 15,
+    "rag:prompt": 1,
+    "rag:promptPath": "../../../outputs/rag/systems/dense_minilm_l12_rerank.prompts.txt"
+  },
+  "task_5:output": {
+    "type": "triviaqa_evaluation",
+    "outputPath": "../../../outputs/rag/systems/dense_minilm_l12_rerank.answers.json",
+    "promptPath": "../../../outputs/rag/systems/dense_minilm_l12_rerank.prompts.txt"
+  }
+}

@@ -1,6 +1,28 @@
-HW-backup/
+# Python build and cache files
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+build/
+dist/
 
-# Local data, indexes, downloaded models, and external binaries.
-INPUT_DIR/*
-!INPUT_DIR/.gitkeep
-!INPUT_DIR/INPUT_README.md
+# Local environments and editor state
+.venv/
+.vscode/
+.DS_Store
+
+# Generated experiment outputs
+outputs/*
+!outputs/.gitkeep
+
+# Large local runtime assets. Keep documentation only.
+data/indexes/
+data/models/
+data/evaluation/
+data/qrels/
+data/tools/
+data/.gitkeep
+
+# Machine-local notes
+CODEX_LOCAL.md

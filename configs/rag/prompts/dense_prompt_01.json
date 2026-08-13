@@ -1,0 +1,31 @@
+{
+  "indexPath": "../../../data/indexes/clueweb22-lucene",
+  "queryFilePath": "../../../datasets/triviaqa/verified_wikipedia_dev.qry",
+  "task_1:ranker": {
+    "type": "dense",
+    "outputLength": 1000,
+    "dense:indexPath": "../../../data/indexes/clueweb22-faiss-b300-fp",
+    "dense:modelPath": "../../../data/models/co-condenser-marco-retriever"
+  },
+  "task_2:output": {
+    "type": "trec_eval",
+    "outputPath": "../../../outputs/rag/prompts/dense_prompt_01.run",
+    "outputLength": 1000
+  },
+  "task_3:agent": {
+    "type": "rag",
+    "agentDepth": 5,
+    "rag:dense:modelPath": "../../../data/models/co-condenser-marco-retriever",
+    "rag:psgLen": 150,
+    "rag:psgStride": 140,
+    "rag:psgCnt": 6,
+    "rag:maxTitleLength": 15,
+    "rag:prompt": 1,
+    "rag:promptPath": "../../../outputs/rag/prompts/dense_prompt_01.prompts.txt"
+  },
+  "task_4:output": {
+    "type": "triviaqa_evaluation",
+    "outputPath": "../../../outputs/rag/prompts/dense_prompt_01.answers.json",
+    "promptPath": "../../../outputs/rag/prompts/dense_prompt_01.prompts.txt"
+  }
+}

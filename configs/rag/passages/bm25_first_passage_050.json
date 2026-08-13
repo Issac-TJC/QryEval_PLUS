@@ -1,0 +1,29 @@
+{
+  "indexPath": "../../../data/indexes/clueweb22-lucene",
+  "queryFilePath": "../../../datasets/triviaqa/verified_wikipedia_dev.qry",
+  "task_1:ranker": {
+    "type": "inRankFile",
+    "inRankFile:Path": "../../../datasets/triviaqa/bm25_baseline.run"
+  },
+  "task_2:output": {
+    "type": "trec_eval",
+    "outputPath": "../../../outputs/rag/passages/bm25_first_passage_050.run",
+    "outputLength": 1000
+  },
+  "task_3:agent": {
+    "type": "rag",
+    "agentDepth": 5,
+    "rag:dense:modelPath": "../../../data/models/co-condenser-marco-retriever",
+    "rag:psgLen": 50,
+    "rag:psgStride": 40,
+    "rag:psgCnt": 1,
+    "rag:maxTitleLength": 15,
+    "rag:prompt": 1,
+    "rag:promptPath": "../../../outputs/rag/passages/bm25_first_passage_050.prompts.txt"
+  },
+  "task_4:output": {
+    "type": "triviaqa_evaluation",
+    "outputPath": "../../../outputs/rag/passages/bm25_first_passage_050.answers.json",
+    "promptPath": "../../../outputs/rag/passages/bm25_first_passage_050.prompts.txt"
+  }
+}
