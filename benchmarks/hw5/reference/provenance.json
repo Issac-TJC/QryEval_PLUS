@@ -1,0 +1,7 @@
+{
+  "source": "/Users/issactjc/dev/11642/QryEval/HW5/HW5_Exp3_CustomExperiments.csv",
+  "sha256": "97d3f136d4198ede2bcd31509156029e813eade98ceae833d5b579ea284b0dda",
+  "copied_for": "Read-only historical comparison",
+  "query_sha256": "4dac3d3dad428a5b05be30d63cc83a4e27d2ee90c42c1f9c45e45931b95d0212",
+  "bm25_run_sha256": "d801f5dfc2fc1cf7104445d82fe9872933d0482604f0422b55bd54976ff232a0"
+}

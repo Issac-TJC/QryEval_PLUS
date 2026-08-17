@@ -1,0 +1,45 @@
+{
+  "indexPath": "../../data/indexes/clueweb22-lucene",
+  "queryFilePath": "../../datasets/triviaqa/verified_wikipedia_dev.qry",
+  "task_1:agent": {
+    "type": "agentic_rag",
+    "rag:provider": "deepseek",
+    "rag:baseUrl": "https://api.deepseek.com",
+    "rag:model": "deepseek-v4-flash",
+    "rag:apiKeyEnv": "DEEPSEEK_API_KEY",
+    "rag:timeoutSeconds": 120,
+    "rag:maxRetries": 2,
+    "rag:maxTokens": 64,
+    "rag:temperature": 0,
+    "rag:thinking": false,
+    "rag:prompt": 1,
+    "rag:dense:modelPath": "../../data/models/co-condenser-marco-retriever",
+    "rag:psgLen": 150,
+    "rag:psgStride": 140,
+    "rag:psgCnt": 6,
+    "rag:maxTitleLength": 15,
+    "agent:allowedTools": ["search_bm25", "finish_research"],
+    "agent:maxTurns": 6,
+    "agent:maxRetrievalCalls": 3,
+    "agent:maxRerankCalls": 0,
+    "agent:maxFusionCalls": 0,
+    "agent:maxContextDocs": 5,
+    "agentDepth": 5,
+    "agent:retrievalDepth": 1000,
+    "agent:plannerMaxTokens": 256,
+    "agent:maxPlannerRetries": 1,
+    "agent:bm25InRankPath": "../../datasets/triviaqa/bm25_baseline.run",
+    "agent:trajectoryPath": "../../outputs/agentic/bm25_agent/trajectory.jsonl",
+    "agent:checkpointPath": "../../outputs/agentic/bm25_agent/checkpoint.jsonl"
+  },
+  "task_2:output": {
+    "type": "trec_eval",
+    "outputPath": "../../outputs/agentic/bm25_agent/results.run",
+    "outputLength": 1000
+  },
+  "task_3:output": {
+    "type": "triviaqa_evaluation",
+    "outputPath": "../../outputs/agentic/bm25_agent/answers.json",
+    "metadataPath": "../../outputs/agentic/bm25_agent/llm.json"
+  }
+}

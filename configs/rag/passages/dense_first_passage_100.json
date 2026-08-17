@@ -1,0 +1,42 @@
+{
+  "indexPath": "../../../data/indexes/clueweb22-lucene",
+  "queryFilePath": "../../../datasets/triviaqa/verified_wikipedia_dev.qry",
+  "task_1:ranker": {
+    "type": "dense",
+    "outputLength": 1000,
+    "dense:indexPath": "../../../data/indexes/clueweb22-faiss-b300-fp",
+    "dense:modelPath": "../../../data/models/co-condenser-marco-retriever"
+  },
+  "task_2:output": {
+    "type": "trec_eval",
+    "outputPath": "../../../outputs/rag/passages/dense_first_passage_100.run",
+    "outputLength": 1000
+  },
+  "task_3:agent": {
+    "type": "rag",
+    "rag:provider": "deepseek",
+    "rag:baseUrl": "https://api.deepseek.com",
+    "rag:model": "deepseek-v4-flash",
+    "rag:apiKeyEnv": "DEEPSEEK_API_KEY",
+    "rag:timeoutSeconds": 120,
+    "rag:maxRetries": 2,
+    "rag:maxTokens": 64,
+    "rag:temperature": 0,
+    "rag:thinking": false,
+    "rag:fallback": false,
+    "agentDepth": 5,
+    "rag:dense:modelPath": "../../../data/models/co-condenser-marco-retriever",
+    "rag:psgLen": 100,
+    "rag:psgStride": 90,
+    "rag:psgCnt": 1,
+    "rag:maxTitleLength": 15,
+    "rag:prompt": 1,
+    "rag:promptPath": "../../../outputs/rag/passages/dense_first_passage_100.prompts.txt"
+  },
+  "task_4:output": {
+    "type": "triviaqa_evaluation",
+    "outputPath": "../../../outputs/rag/passages/dense_first_passage_100.answers.json",
+    "promptPath": "../../../outputs/rag/passages/dense_first_passage_100.prompts.txt",
+    "metadataPath": "../../../outputs/rag/passages/dense_first_passage_100.llm.json"
+  }
+}
