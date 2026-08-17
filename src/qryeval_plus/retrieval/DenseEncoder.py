@@ -53,7 +53,9 @@ class DenseEncoder:
         self._model.eval()
 
     def _tokenize_string(self, text):
-        return self._tokenizer.encode_plus(
+        # ``encode_plus`` was removed in Transformers 5.  Calling the
+        # tokenizer is the supported equivalent in both 4.x and 5.x.
+        return self._tokenizer(
             "" if text is None else str(text),
             max_length=self._model_max_sequence_length,
             truncation=True,

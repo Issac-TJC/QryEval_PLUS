@@ -1,0 +1,40 @@
+{
+  "queryFilePath": "../../datasets/triviaqa/verified_wikipedia_dev.qry",
+  "qrelPath": "../../data/evaluation/triviaqa/verified-wikipedia-dev.qrel",
+  "goldPath": "../../data/evaluation/triviaqa/verified-wikipedia-dev.json",
+  "trecEvalPath": "../../data/tools/trec_eval",
+  "historicalReferencePath": "../../benchmarks/hw5/reference/HW5_Exp3_CustomExperiments.csv",
+  "historicalProvenancePath": "../../benchmarks/hw5/reference/provenance.json",
+  "outputRoot": "../../outputs/benchmarks/hw5-agent",
+  "systems": [
+    {
+      "name": "historical_baseline",
+      "label": "Historical HW5 Baseline",
+      "historical": true,
+      "metrics": {
+        "exact": 40.0,
+        "f1": 54.17,
+        "MRR": 0.6643,
+        "P@1": 0.6,
+        "P@5": 0.415,
+        "time_seconds": 515
+      }
+    },
+    {
+      "name": "fixed_bm25",
+      "label": "Reproduced Fixed BM25 RAG",
+      "baseline": true,
+      "config": "../rag/systems/bm25_baseline.json"
+    },
+    {
+      "name": "bm25_agent",
+      "label": "LangGraph BM25 Agent",
+      "config": "../agent/bm25_agent.json"
+    },
+    {
+      "name": "full_tools_agent",
+      "label": "LangGraph Full-tools Agent",
+      "config": "../agent/full_tools_agent.json"
+    }
+  ]
+}

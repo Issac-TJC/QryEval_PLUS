@@ -17,7 +17,7 @@ def run_pipeline(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     from qryeval_plus.core.Idx import Idx
     from qryeval_plus.io.Output import Output
-    from qryeval_plus.rag.Agent import Agent
+    from qryeval_plus.rag.Agent import create_agent
     from qryeval_plus.rerank.Reranker import Reranker
     from qryeval_plus.retrieval.Ranker import Ranker
     from qryeval_plus.rewrite.Rewriter import Rewriter
@@ -36,7 +36,7 @@ def run_pipeline(parameters: Dict[str, Any]) -> Dict[str, Any]:
         batch = {qid: {"qstring": qstring} for qid, qstring in queries.items()}
 
         factories = {
-            "agent": Agent,
+            "agent": create_agent,
             "output": Output,
             "ranker": Ranker,
             "reranker": Reranker,

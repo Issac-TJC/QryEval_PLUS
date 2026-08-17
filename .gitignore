@@ -12,6 +12,16 @@ dist/
 .vscode/
 .DS_Store
 
+# Local credentials and API secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.secrets.json
+*.credentials.json
+*.pem
+*.key
+
 # Generated experiment outputs
 outputs/*
 !outputs/.gitkeep

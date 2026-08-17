@@ -12,6 +12,16 @@
   },
   "task_3:agent": {
     "type": "rag",
+    "rag:provider": "deepseek",
+    "rag:baseUrl": "https://api.deepseek.com",
+    "rag:model": "deepseek-v4-flash",
+    "rag:apiKeyEnv": "DEEPSEEK_API_KEY",
+    "rag:timeoutSeconds": 120,
+    "rag:maxRetries": 2,
+    "rag:maxTokens": 64,
+    "rag:temperature": 0,
+    "rag:thinking": false,
+    "rag:fallback": false,
     "agentDepth": 5,
     "rag:dense:modelPath": "../../../data/models/co-condenser-marco-retriever",
     "rag:psgLen": 50,
@@ -24,6 +34,7 @@
   "task_4:output": {
     "type": "triviaqa_evaluation",
     "outputPath": "../../../outputs/rag/passages/bm25_first_passage_050.answers.json",
-    "promptPath": "../../../outputs/rag/passages/bm25_first_passage_050.prompts.txt"
+    "promptPath": "../../../outputs/rag/passages/bm25_first_passage_050.prompts.txt",
+    "metadataPath": "../../../outputs/rag/passages/bm25_first_passage_050.llm.json"
   }
 }

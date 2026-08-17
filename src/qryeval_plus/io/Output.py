@@ -20,6 +20,7 @@ class Output:
         self._outputLength = parameters.get('outputLength')
         self._promptPath = parameters.get('promptPath',
                                           parameters.get('rag:promptPath'))
+        self._metadataPath = parameters.get('metadataPath')
 
 
     def close(self):
@@ -39,6 +40,9 @@ class Output:
             parents=True, exist_ok=True)
         if self._promptPath is not None:
             Path(self._promptPath).expanduser().resolve().parent.mkdir(
+                parents=True, exist_ok=True)
+        if self._metadataPath is not None:
+            Path(self._metadataPath).expanduser().resolve().parent.mkdir(
                 parents=True, exist_ok=True)
 
         if self._type == 'trec_eval':
@@ -63,6 +67,20 @@ class Output:
 
             if self._promptPath is not None:
                 Util.file_write_strings(self._promptPath, prompt_lines)
+
+            if self._metadataPath is not None:
+                metadata = {
+                    qid: {
+                        **batch[qid].get('llm', {}),
+                        **(
+                            {'agent': batch[qid]['agent']}
+                            if 'agent' in batch[qid] else {}
+                        ),
+                    }
+                    for qid in batch
+                }
+                with open(self._metadataPath, 'w') as f:
+                    json.dump(metadata, f, indent=2)
         else:
             raise Exception('Error: Unknown Output format')
             

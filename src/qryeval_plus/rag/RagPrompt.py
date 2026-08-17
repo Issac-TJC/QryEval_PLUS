@@ -4,7 +4,6 @@ Prompt construction and response post-processing for RAG.
 
 # Copyright (c) 2026, Carnegie Mellon University.  All Rights Reserved.
 
-import os
 import re
 
 
@@ -15,32 +14,7 @@ class RagPrompt:
 
     def __init__(self, parameters):
         self._parameters = parameters
-        self._email = self._first_nonempty([
-            parameters.get("rag:email"),
-            parameters.get("email"),
-            os.environ.get("RAG_EMAIL"),
-            os.environ.get("AUTH_EMAIL"),
-            os.environ.get("ANDREW_EMAIL"),
-            "junchent@andrew.cmu.edu",
-        ])
-        self._code = self._first_nonempty([
-            parameters.get("rag:code"),
-            parameters.get("code"),
-            os.environ.get("RAG_CODE"),
-            os.environ.get("AUTH_CODE"),
-            os.environ.get("ACCESS_CODE"),
-            "pqI4",
-        ])
         self._prompt_id = int(parameters.get("rag:prompt", 1))
-
-    def _first_nonempty(self, values):
-        for value in values:
-            if value is None:
-                continue
-            value = str(value).strip()
-            if value != "":
-                return value
-        return None
 
     def build(self, question, passages):
         context = " ".join(
@@ -49,11 +23,6 @@ class RagPrompt:
         system_content, user_content = self._build_prompt_content(question, context)
 
         return [
-            {
-                "role": "authorize",
-                "email": self._email if self._email is not None else "",
-                "code": self._code if self._code is not None else "",
-            },
             {
                 "role": "system",
                 "content": system_content,

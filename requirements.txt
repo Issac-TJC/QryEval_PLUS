@@ -1,7 +1,7 @@
 # Convenience mirror of the runtime dependencies declared in pyproject.toml.
-numpy>=1.23
-torch>=2.0
-transformers>=4.12
-huggingface_hub>=0.20
+numpy>=1.23,<2
+torch>=2.0,<2.1
+transformers>=4.40,<4.41
+huggingface_hub>=0.20,<1
 pyjnius>=1.5
-faiss-cpu>=1.7
+faiss-cpu>=1.8,<1.9

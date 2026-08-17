@@ -112,7 +112,9 @@ def str_to_num(obj):
     a list or a dict, call recursively on the list elements or dict
     values. Objects that cannot be converted are returned unchanged.
     """
-    if type(obj) is int or type(obj) is float:
+    if obj is None or type(obj) is bool:
+        return(obj)
+    elif type(obj) is int or type(obj) is float:
         return(obj)
     elif type(obj) is str:
         try:

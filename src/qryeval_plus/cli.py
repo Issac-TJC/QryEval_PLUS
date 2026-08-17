@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import platform
 import sys
 from importlib.resources import files
 from pathlib import Path
 
-from qryeval_plus.config import ConfigError, discover_configs, load_config, validate_config
+from qryeval_plus.config import (
+    ConfigError,
+    discover_configs,
+    load_config,
+    ordered_tasks,
+    validate_config,
+)
 from qryeval_plus.runtime import configure_java_home
 
 
@@ -31,6 +38,13 @@ def _build_parser() -> argparse.ArgumentParser:
     demo.add_argument("--config", default=None)
     demo.add_argument("--questions", type=int, default=1)
     demo.add_argument("--dry-run", action="store_true")
+
+    benchmark = subparsers.add_parser(
+        "benchmark", help="Run a reproducible fixed-vs-agent benchmark."
+    )
+    benchmark.add_argument("manifest")
+    benchmark.add_argument("--limit", type=int, choices=(5, 40), default=5)
+    benchmark.add_argument("--resume", action="store_true")
     return parser
 
 
@@ -100,6 +114,40 @@ def _doctor_command(config: str | None) -> int:
         for error in errors:
             print(f"  - {error}")
         failures.extend(errors)
+        if not errors:
+            from qryeval_plus.llm import provider_summary
+
+            agentic = any(
+                role == "agent" and str(task.get("type", "")).lower() == "agentic_rag"
+                for _, role, task in ordered_tasks(parameters)
+            )
+            if agentic:
+                python_ok = sys.version_info[:2] == (3, 11)
+                print(f"Agent Python 3.11: {'OK' if python_ok else 'MISMATCH'}")
+                if not python_ok:
+                    failures.append("Python 3.11 Agent runtime")
+                for label, module in (("Pydantic", "pydantic"), ("LangGraph", "langgraph")):
+                    ok = _module_status(module)
+                    print(f"{label}: {'OK' if ok else 'MISSING'}")
+                    if not ok:
+                        failures.append(label)
+
+            for task_name, role, task in ordered_tasks(parameters):
+                if role != "agent" or str(task.get("type", "")).lower() not in {
+                    "rag", "agentic_rag"
+                }:
+                    continue
+                summary = provider_summary(task)
+                print(
+                    "LLM: {} / {} ({})".format(
+                        summary["provider"], summary["model"], summary["base_url"]
+                    )
+                )
+                key_name = summary["api_key_env"]
+                key_set = bool(os.environ.get(key_name, "").strip())
+                print(f"LLM credential {key_name}: {'SET' if key_set else 'MISSING'}")
+                if summary["api_key_required"] and not key_set:
+                    failures.append(f"environment variable {key_name}")
 
     if failures:
         print("Runtime is not ready: " + ", ".join(failures))
@@ -158,8 +206,15 @@ def main(argv=None) -> None:
             code = _validate_command(args.path, not args.no_assets)
         elif args.command == "doctor":
             code = _doctor_command(args.config)
-        else:
+        elif args.command == "demo":
             code = _demo_command(args.config, args.questions, args.dry_run)
+        else:
+            from qryeval_plus.benchmark import run_benchmark
+            output = run_benchmark(
+                args.manifest, limit=args.limit, resume=args.resume
+            )
+            print("Benchmark artifacts: {}".format(output))
+            code = 0
     except (ConfigError, OSError, RuntimeError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         code = 1

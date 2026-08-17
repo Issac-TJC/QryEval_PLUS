@@ -15,9 +15,19 @@ _TASK_RE = re.compile(r"^task_(\d+):([a-z]+)$")
 _PATH_KEYS = {
     "indexPath",
     "queryFilePath",
+    "qrelPath",
+    "goldPath",
+    "trecEvalPath",
+    "historicalReferencePath",
+    "historicalProvenancePath",
+    "outputRoot",
     "inRankFile:Path",
     "outputPath",
     "promptPath",
+    "metadataPath",
+    "agent:trajectoryPath",
+    "agent:checkpointPath",
+    "agent:bm25InRankPath",
     "prf:expansionQueryFile",
     "dense:indexPath",
     "dense:modelPath",
@@ -98,6 +108,8 @@ def ordered_tasks(parameters: Dict[str, Any]) -> List[Tuple[str, str, Dict[str, 
 
 def validate_config(parameters: Dict[str, Any], check_assets: bool = True) -> List[str]:
     """Return validation errors without importing the Java bridge."""
+    if "systems" in parameters and "trecEvalPath" in parameters:
+        return _validate_benchmark_manifest(parameters, check_assets)
     errors: List[str] = []
     for key in ("indexPath", "queryFilePath"):
         if not parameters.get(key):
@@ -117,6 +129,16 @@ def validate_config(parameters: Dict[str, Any], check_assets: bool = True) -> Li
             errors.append(f"Unsupported task role in {task_key}: {role}")
         if not task.get("type"):
             errors.append(f"Missing type in {task_key}")
+        if role == "agent" and str(task.get("type", "")).lower() in {
+            "rag", "agentic_rag"
+        }:
+            try:
+                from qryeval_plus.llm import provider_summary
+                provider_summary(task)
+            except (TypeError, ValueError) as exc:
+                errors.append(f"Invalid LLM provider in {task_key}: {exc}")
+        if role == "agent" and str(task.get("type", "")).lower() == "agentic_rag":
+            errors.extend(_validate_agentic_task(task_key, task))
 
     if check_assets:
         inputs = [parameters.get("indexPath"), parameters.get("queryFilePath")]
@@ -124,6 +146,7 @@ def validate_config(parameters: Dict[str, Any], check_assets: bool = True) -> Li
             for key, value in task.items():
                 if key in _PATH_KEYS and key not in {
                     "outputPath", "promptPath", "rag:promptPath",
+                    "metadataPath", "agent:trajectoryPath", "agent:checkpointPath",
                     "prf:expansionQueryFile", "bertrr:topPsgPath",
                     "ltr:trainingFeatureVectorsFile", "ltr:testingFeatureVectorsFile",
                     "ltr:testingDocumentScores", "ltr:modelFile",
@@ -132,6 +155,69 @@ def validate_config(parameters: Dict[str, Any], check_assets: bool = True) -> Li
         for value in inputs:
             if value and not Path(str(value)).exists():
                 errors.append(f"Input asset does not exist: {value}")
+    return errors
+
+
+def _validate_benchmark_manifest(parameters, check_assets):
+    errors = []
+    systems = parameters.get("systems")
+    if not isinstance(systems, list) or not systems:
+        errors.append("Benchmark manifest requires a non-empty systems list.")
+    else:
+        base = Path(parameters.get("_configPath", ".")).parent
+        for index, system in enumerate(systems):
+            if not isinstance(system, dict) or not system.get("name"):
+                errors.append("Benchmark system {} requires a name.".format(index))
+                continue
+            if system.get("historical"):
+                if not isinstance(system.get("metrics"), dict):
+                    errors.append("Historical system {} requires metrics.".format(index))
+            elif not system.get("config"):
+                errors.append("Benchmark system {} requires config.".format(index))
+            elif check_assets:
+                config_path = Path(str(system["config"])).expanduser()
+                config_path = config_path if config_path.is_absolute() else (base / config_path).resolve()
+                if not config_path.is_file():
+                    errors.append("Input asset does not exist: {}".format(config_path))
+    if check_assets:
+        for key in (
+            "queryFilePath", "qrelPath", "goldPath", "trecEvalPath",
+            "historicalReferencePath", "historicalProvenancePath",
+        ):
+            value = parameters.get(key)
+            if key.startswith("historical") and not value:
+                continue
+            if not value or not Path(str(value)).exists():
+                errors.append("Input asset does not exist: {}".format(value or key))
+    return errors
+
+
+def _validate_agentic_task(task_key, task):
+    errors = []
+    known = {
+        "search_bm25", "search_dense", "rerank",
+        "fuse_rankings", "finish_research",
+    }
+    allowed = task.get("agent:allowedTools")
+    if not isinstance(allowed, list) or not allowed:
+        errors.append("{} requires a non-empty agent:allowedTools list.".format(task_key))
+    else:
+        unknown = sorted(set(str(item) for item in allowed) - known)
+        if unknown:
+            errors.append("{} has unknown tools: {}.".format(task_key, ", ".join(unknown)))
+        if "finish_research" not in allowed:
+            errors.append("{} must allow finish_research.".format(task_key))
+    for key, minimum in (
+        ("agent:maxTurns", 1), ("agent:maxRetrievalCalls", 1),
+        ("agent:maxRerankCalls", 0), ("agent:maxFusionCalls", 0),
+        ("agent:maxPlannerRetries", 0),
+        ("agent:maxContextDocs", 1), ("agentDepth", 1),
+    ):
+        try:
+            if int(task.get(key, minimum)) < minimum:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors.append("{} requires {} >= {}.".format(task_key, key, minimum))
     return errors
 
 

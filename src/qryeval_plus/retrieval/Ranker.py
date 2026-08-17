@@ -70,8 +70,12 @@ class Ranker:
                 return(self._model.rerank_batch(batch))
             return(self.get_rankings_bow(batch))
         elif self._inRank_path is not None:
-            for qid, ranking in Util.read_rankings(self._inRank_path).items():
-                batch[qid]['ranking'] = ranking
+            rankings = Util.read_rankings(self._inRank_path)
+            # A versioned run may contain more queries than a smoke-test
+            # subset. Populate only the active batch and represent a missing
+            # query with an empty ranking so evaluation can count it as zero.
+            for qid in batch:
+                batch[qid]['ranking'] = rankings.get(qid, [])
             return(batch)
         else:
             raise Exception('Error: Ranker does not know how to rank')

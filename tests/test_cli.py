@@ -5,9 +5,10 @@ import sys
 from conftest import PROJECT_ROOT
 
 
-def run_cli(*args, cwd=None):
+def run_cli(*args, cwd=None, extra_env=None):
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PROJECT_ROOT / "src")
+    env.update(extra_env or {})
     return subprocess.run(
         [sys.executable, "-m", "qryeval_plus", *args],
         cwd=cwd or PROJECT_ROOT,
@@ -44,6 +45,24 @@ def test_run_command_succeeds_from_another_directory(tmp_path):
 
 def test_doctor_reports_ready_runtime():
     config = PROJECT_ROOT / "configs" / "rag" / "systems" / "dense_baseline.json"
-    result = run_cli("doctor", "--config", str(config))
+    result = run_cli(
+        "doctor",
+        "--config",
+        str(config),
+        extra_env={"DEEPSEEK_API_KEY": "test-only-key"},
+    )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Runtime is ready" in result.stdout
+    assert "LLM: deepseek / deepseek-v4-flash" in result.stdout
+
+
+def test_doctor_reports_missing_llm_credential():
+    config = PROJECT_ROOT / "configs" / "rag" / "systems" / "dense_baseline.json"
+    result = run_cli(
+        "doctor",
+        "--config",
+        str(config),
+        extra_env={"DEEPSEEK_API_KEY": ""},
+    )
+    assert result.returncode == 1
+    assert "LLM credential DEEPSEEK_API_KEY: MISSING" in result.stdout

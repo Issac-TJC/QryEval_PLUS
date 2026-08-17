@@ -29,6 +29,16 @@ The source tree was inspected but never written. Before deleting the target-side
 
 Most source modules were package-qualified during the earlier reframing. This migration preserves those functional changes and adds configuration loading, deterministic task ordering, JVM discovery, output-directory creation, and guaranteed index cleanup.
 
+After migration verification, the product RAG transport intentionally diverged
+from the source implementation. The source-only custom TCP client and embedded
+authorization message remain recoverable from the read-only source tree but are
+not retained in `QryEval_PLUS`. The current package uses a provider interface
+with HTTPS Chat Completions implementations. All 35 configurations select
+DeepSeek through `DEEPSEEK_API_KEY`; retrieval, passage, prompt, and output
+parameters retain their mapped experiment meaning. A new `.llm.json` sidecar
+per experiment records provider execution metadata without changing the mapped
+TriviaQA answer files.
+
 ## RAG configuration mapping
 
 All source query files named `HW5-Exp-*.qry` were byte-identical. They map to `datasets/triviaqa/verified_wikipedia_dev.qry`.
@@ -123,7 +133,7 @@ Verification commands:
 
 ```sh
 qryeval validate configs/rag
-qryeval doctor --config configs/rag/systems/dense_baseline.json
+DEEPSEEK_API_KEY='<redacted>' qryeval doctor --config configs/rag/systems/dense_baseline.json
 python -m pytest
 QRYEVAL_RUN_INTEGRATION=1 python -m pytest -m integration
 python -m pip wheel --no-build-isolation --no-deps .
