@@ -133,20 +133,14 @@ class QryParser:
         """
 
         # Split the token into a term and a field.
+        known_fields = {'body', 'title', 'url', 'keywords', 'inlink'}
+        term = token
+        field = 'body'
         if '.' in token:
-            term, field = token.split('.', 1)
-            field = field.lower()
-        else:
-            term = token
-            field = 'body'
-
-        # Confirm that the field is a known field.
-        if not (field == 'body' or
-                field == 'title' or
-                field == 'url' or 
-                field == 'keywords' or
-                field == 'inlink'):
-            QryParser.__syntaxError('Unknown field ' + token)
+            candidate_term, candidate_field = token.rsplit('.', 1)
+            candidate_field = candidate_field.lower()
+            if candidate_term and candidate_field in known_fields:
+                term, field = candidate_term, candidate_field
 
         # Lexical processing, stopwords, stemming.  A loop is used
         # just in case a term (e.g., "near-death") gets tokenized into

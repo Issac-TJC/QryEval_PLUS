@@ -152,3 +152,46 @@ def test_agentic_bm25_pipeline_with_real_index_and_mock_planner(tmp_path, monkey
     assert (tmp_path / "checkpoint.jsonl").is_file()
     assert (tmp_path / "result.run").is_file()
     assert (tmp_path / "answers.json").is_file()
+
+
+@pytest.mark.skipif(os.environ.get("QRYEVAL_RUN_INTEGRATION") != "1", reason="local integration test is opt-in")
+def test_adaptive_rewrite_with_real_lucene_and_mock_controller(tmp_path):
+    from qryeval_plus.agentic.rewrite import RewriteRagAgent
+    from qryeval_plus.config import load_config
+    from qryeval_plus.core.Idx import Idx
+    from qryeval_plus.llm import LLMResponse, LLMToolCall
+
+    config = load_config(PROJECT_ROOT / "configs" / "triviaqa318" / "adaptive_rewrite.json")
+    parameters = dict(config["task_1:agent"])
+    parameters["agent:retrievalDepth"] = 5
+    parameters["agent:checkpointPath"] = str(tmp_path / "checkpoint.jsonl")
+    parameters["agent:trajectoryPath"] = str(tmp_path / "trajectory.jsonl")
+
+    class Provider:
+        name = "mock"
+        model = "scripted"
+
+        def complete(self, messages, **kwargs):
+            return LLMResponse(
+                content="", provider=self.name, model=self.model, duration_seconds=0,
+                usage={"total_tokens": 1},
+                tool_calls=[LLMToolCall(id="finish", name="finish", arguments={})],
+            )
+
+        def generate(self, messages):
+            return LLMResponse(
+                content="V-2 rocket", provider=self.name, model=self.model,
+                duration_seconds=0, usage={"total_tokens": 1},
+            )
+
+    assert Idx.open(config["indexPath"])
+    try:
+        batch = RewriteRagAgent(parameters, provider=Provider()).execute({
+            "q1": {"qstring": "what powered the first human made object to enter space"}
+        })
+        assert batch["q1"]["ranking"]
+        assert batch["q1"]["rewrite"]["decision"] == "finish"
+        assert batch["q1"]["rewrite"]["retrieval_calls"] == 1
+        assert batch["q1"]["answer"] == "V-2 rocket"
+    finally:
+        Idx.close()

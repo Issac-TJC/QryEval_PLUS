@@ -8,4 +8,4 @@ dependencies:
   - numpy>=1.23,<2
   - pip
   - pip:
-      - -e .[test,agent]
+      - -e .[test,agent,serve]

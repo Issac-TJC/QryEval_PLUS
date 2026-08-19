@@ -1,0 +1,201 @@
+{
+  "created_at": "2026-08-19",
+  "docker": {
+    "reason": "Docker is not installed on the development machine.",
+    "status": "not_run"
+  },
+  "environment": {
+    "machine": "arm64",
+    "platform": "macOS-15.7.7-arm64-arm-64bit",
+    "python": "3.11"
+  },
+  "hot_cache_mock": {
+    "runs": [
+      {
+        "cache_bust": false,
+        "cache_bust_label": null,
+        "cache_hit_rate": 1.0,
+        "concurrency": 1,
+        "duration_seconds": 0.20756345900008455,
+        "latency_seconds": {
+          "p50": 0.0008837499990477227,
+          "p95": 0.001009496510232566,
+          "p99": 0.0012230009130144014
+        },
+        "policy": "adaptive_rewrite",
+        "rate_limited_rate": 0.0,
+        "requests": 200,
+        "status_counts": {
+          "200": 200
+        },
+        "success_rate": 1.0,
+        "throughput_qps": 963.5607392721208,
+        "tokens_per_success": 0.0,
+        "url": "http://127.0.0.1:8010"
+      },
+      {
+        "cache_bust": false,
+        "cache_bust_label": null,
+        "cache_hit_rate": 1.0,
+        "concurrency": 4,
+        "duration_seconds": 0.08653466700343415,
+        "latency_seconds": {
+          "p50": 0.0015752290055388585,
+          "p95": 0.0017506815456727054,
+          "p99": 0.0030707030034682207
+        },
+        "policy": "adaptive_rewrite",
+        "rate_limited_rate": 0.0,
+        "requests": 200,
+        "status_counts": {
+          "200": 200
+        },
+        "success_rate": 1.0,
+        "throughput_qps": 2311.212453063036,
+        "tokens_per_success": 0.0,
+        "url": "http://127.0.0.1:8010"
+      },
+      {
+        "cache_bust": false,
+        "cache_bust_label": null,
+        "cache_hit_rate": 1.0,
+        "concurrency": 8,
+        "duration_seconds": 0.11105858298833482,
+        "latency_seconds": {
+          "p50": 0.003537854499882087,
+          "p95": 0.0075596017421048585,
+          "p99": 0.01015662635094483
+        },
+        "policy": "adaptive_rewrite",
+        "rate_limited_rate": 0.0,
+        "requests": 200,
+        "status_counts": {
+          "200": 200
+        },
+        "success_rate": 1.0,
+        "throughput_qps": 1800.8513580711476,
+        "tokens_per_success": 0.0,
+        "url": "http://127.0.0.1:8010"
+      },
+      {
+        "cache_bust": false,
+        "cache_bust_label": null,
+        "cache_hit_rate": 1.0,
+        "concurrency": 16,
+        "duration_seconds": 0.2653959580056835,
+        "latency_seconds": {
+          "p50": 0.015413416498631705,
+          "p95": 0.042145153540332075,
+          "p99": 0.06230743783249629
+        },
+        "policy": "adaptive_rewrite",
+        "rate_limited_rate": 0.0,
+        "requests": 200,
+        "status_counts": {
+          "200": 200
+        },
+        "success_rate": 1.0,
+        "throughput_qps": 753.5909796927539,
+        "tokens_per_success": 0.0,
+        "url": "http://127.0.0.1:8010"
+      }
+    ]
+  },
+  "real_provider": {
+    "reason": "The locked 278-question paid-provider benchmark was completed separately and reports real controller/answer latency. A distinct HTTP service load test was not run, so no real-provider service QPS is claimed.",
+    "status": "not_run"
+  },
+  "scope": "FastAPI/Uvicorn/SQLite/single-worker infrastructure with deterministic 10 ms mock inference. This is not real RAG throughput.",
+  "uncached_mock": {
+    "runs": [
+      {
+        "cache_bust": true,
+        "cache_bust_label": "c1",
+        "cache_hit_rate": 0.0,
+        "concurrency": 1,
+        "duration_seconds": 1.1788455000059912,
+        "latency_seconds": {
+          "p50": 0.017823646005126648,
+          "p95": 0.020070640061749145,
+          "p99": 0.020614187489409234
+        },
+        "policy": "adaptive_rewrite",
+        "rate_limited_rate": 0.0,
+        "requests": 64,
+        "status_counts": {
+          "200": 64
+        },
+        "success_rate": 1.0,
+        "throughput_qps": 54.29040531577271,
+        "tokens_per_success": 22.0,
+        "url": "http://127.0.0.1:8010"
+      },
+      {
+        "cache_bust": true,
+        "cache_bust_label": "c4",
+        "cache_hit_rate": 0.0,
+        "concurrency": 4,
+        "duration_seconds": 0.9636915000010049,
+        "latency_seconds": {
+          "p50": 0.05978304149903124,
+          "p95": 0.0631412624999939,
+          "p99": 0.06364105803499115
+        },
+        "policy": "adaptive_rewrite",
+        "rate_limited_rate": 0.0,
+        "requests": 64,
+        "status_counts": {
+          "200": 64
+        },
+        "success_rate": 1.0,
+        "throughput_qps": 66.41129448576984,
+        "tokens_per_success": 22.0,
+        "url": "http://127.0.0.1:8010"
+      },
+      {
+        "cache_bust": true,
+        "cache_bust_label": "c8",
+        "cache_hit_rate": 0.0,
+        "concurrency": 8,
+        "duration_seconds": 0.9684694160096115,
+        "latency_seconds": {
+          "p50": 0.11846212550153723,
+          "p95": 0.12452880010823719,
+          "p99": 0.12659352971095358
+        },
+        "policy": "adaptive_rewrite",
+        "rate_limited_rate": 0.0,
+        "requests": 64,
+        "status_counts": {
+          "200": 64
+        },
+        "success_rate": 1.0,
+        "throughput_qps": 66.08365627455689,
+        "tokens_per_success": 22.0,
+        "url": "http://127.0.0.1:8010"
+      },
+      {
+        "cache_bust": true,
+        "cache_bust_label": "c16",
+        "cache_hit_rate": 0.0,
+        "concurrency": 16,
+        "duration_seconds": 0.9413365840009646,
+        "latency_seconds": {
+          "p50": 0.22832097950595198,
+          "p95": 0.2337938598531764,
+          "p99": 0.23447940900034156
+        },
+        "policy": "adaptive_rewrite",
+        "rate_limited_rate": 0.0,
+        "requests": 64,
+        "status_counts": {
+          "200": 64
+        },
+        "success_rate": 1.0,
+        "throughput_qps": 67.98843377358254,
+        "tokens_per_success": 22.0,
+        "url": "http://127.0.0.1:8010"
+      }
+    ]
+  }
+}

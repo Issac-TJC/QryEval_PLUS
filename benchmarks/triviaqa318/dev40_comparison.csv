@@ -1,0 +1,7 @@
+Metric,Historical HW5 Baseline,Reproduced Fixed BM25 RAG,LangGraph BM25 Agent,LangGraph Full-tools Agent
+exact,40.00,67.50,72.50,72.50
+f1,54.17,80.50,85.24,83.89
+MRR,0.6643,0.6643,0.7951,0.7080
+P@1,0.6000,0.6000,0.7500,0.6500
+P@5,0.4150,0.4150,0.5100,0.4400
+time,08:35,02:21,08:26,15:09

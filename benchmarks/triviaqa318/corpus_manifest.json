@@ -1,0 +1,51 @@
+{
+  "corpus_version": "f135e18070c5ebbb",
+  "faiss": {
+    "bytes": 839086125,
+    "path": "data/indexes/clueweb22-faiss-b300-fp",
+    "sha256": "a9dc179aa01b796f856b96f81f76c7cf97f727c1ceab93b924c4ac125ebc1d06",
+    "vectors": 273140
+  },
+  "generated_at": "2026-08-19",
+  "lucene": {
+    "bytes": 1780201492,
+    "documents": 273140,
+    "fields": {
+      "body": {
+        "average_terms": 1485.7325876839716,
+        "documents": 273140,
+        "terms": 405812999
+      },
+      "inlink": {
+        "average_terms": 0.0,
+        "documents": 0,
+        "terms": 0
+      },
+      "keywords": {
+        "average_terms": 0.0,
+        "documents": 0,
+        "terms": 0
+      },
+      "title": {
+        "average_terms": 3.646020355861463,
+        "documents": 273140,
+        "terms": 995874
+      },
+      "url": {
+        "average_terms": 0.0,
+        "documents": 0,
+        "terms": 0
+      }
+    },
+    "path": "data/indexes/clueweb22-lucene",
+    "sha256": "86ece7bf3b4eb4da319e9d99ebf2240f9c26a62aa9938f49480b40ccfcdab495"
+  },
+  "note": "Paths are repository-relative mount points; large index files are not distributed in Git.",
+  "passages": {
+    "candidates_per_document": 6,
+    "length": 150,
+    "precomputed_chunk_count": null,
+    "storage": "dynamic_per_retrieved_document",
+    "stride": 140
+  }
+}

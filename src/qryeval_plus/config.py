@@ -21,12 +21,19 @@ _PATH_KEYS = {
     "historicalReferencePath",
     "historicalProvenancePath",
     "outputRoot",
+    "cachePath",
+    "corpusManifestPath",
+    "fixtureCorpusPath",
+    "splitManifestPath",
+    "experimentConfig",
+    "protocolLockPath",
     "inRankFile:Path",
     "outputPath",
     "promptPath",
     "metadataPath",
     "agent:trajectoryPath",
     "agent:checkpointPath",
+    "rag:cachePath",
     "agent:bm25InRankPath",
     "prf:expansionQueryFile",
     "dense:indexPath",
@@ -110,6 +117,8 @@ def validate_config(parameters: Dict[str, Any], check_assets: bool = True) -> Li
     """Return validation errors without importing the Java bridge."""
     if "systems" in parameters and "trecEvalPath" in parameters:
         return _validate_benchmark_manifest(parameters, check_assets)
+    if "experimentConfig" in parameters:
+        return _validate_service_config(parameters, check_assets)
     errors: List[str] = []
     for key in ("indexPath", "queryFilePath"):
         if not parameters.get(key):
@@ -130,7 +139,7 @@ def validate_config(parameters: Dict[str, Any], check_assets: bool = True) -> Li
         if not task.get("type"):
             errors.append(f"Missing type in {task_key}")
         if role == "agent" and str(task.get("type", "")).lower() in {
-            "rag", "agentic_rag"
+            "rag", "agentic_rag", "rewrite_rag"
         }:
             try:
                 from qryeval_plus.llm import provider_summary
@@ -139,6 +148,12 @@ def validate_config(parameters: Dict[str, Any], check_assets: bool = True) -> Li
                 errors.append(f"Invalid LLM provider in {task_key}: {exc}")
         if role == "agent" and str(task.get("type", "")).lower() == "agentic_rag":
             errors.extend(_validate_agentic_task(task_key, task))
+        if role == "agent" and str(task.get("type", "")).lower() == "rewrite_rag":
+            policy = str(task.get("rewrite:policy", "")).lower()
+            if policy not in {"always", "adaptive"}:
+                errors.append(
+                    "{} requires rewrite:policy 'always' or 'adaptive'.".format(task_key)
+                )
 
     if check_assets:
         inputs = [parameters.get("indexPath"), parameters.get("queryFilePath")]
@@ -147,6 +162,7 @@ def validate_config(parameters: Dict[str, Any], check_assets: bool = True) -> Li
                 if key in _PATH_KEYS and key not in {
                     "outputPath", "promptPath", "rag:promptPath",
                     "metadataPath", "agent:trajectoryPath", "agent:checkpointPath",
+                    "rag:cachePath", "cachePath", "corpusManifestPath",
                     "prf:expansionQueryFile", "bertrr:topPsgPath",
                     "ltr:trainingFeatureVectorsFile", "ltr:testingFeatureVectorsFile",
                     "ltr:testingDocumentScores", "ltr:modelFile",
@@ -183,12 +199,44 @@ def _validate_benchmark_manifest(parameters, check_assets):
         for key in (
             "queryFilePath", "qrelPath", "goldPath", "trecEvalPath",
             "historicalReferencePath", "historicalProvenancePath",
+            "protocolLockPath",
         ):
             value = parameters.get(key)
             if key.startswith("historical") and not value:
                 continue
+            if key == "protocolLockPath" and not value:
+                continue
             if not value or not Path(str(value)).exists():
                 errors.append("Input asset does not exist: {}".format(value or key))
+        for name, value in parameters.get("splits", {}).items():
+            path = Path(str(value)).expanduser()
+            path = path if path.is_absolute() else (Path(parameters.get("_configPath", ".")).parent / path).resolve()
+            if not path.is_file():
+                errors.append("Input asset does not exist for split {}: {}".format(name, path))
+    return errors
+
+
+def _validate_service_config(parameters, check_assets):
+    errors = []
+    try:
+        if int(parameters.get("queueCapacity", 32)) <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        errors.append("Service queueCapacity must be a positive integer.")
+    try:
+        if float(parameters.get("requestTimeoutSeconds", 180)) <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        errors.append("Service requestTimeoutSeconds must be positive.")
+    if not str(parameters.get("corpusVersion", "")).strip():
+        errors.append("Service corpusVersion is required.")
+    if check_assets:
+        experiment = Path(str(parameters.get("experimentConfig", "")))
+        if not experiment.is_file():
+            errors.append("Input asset does not exist: {}".format(experiment))
+        fixture = parameters.get("fixtureCorpusPath")
+        if parameters.get("mock") and (not fixture or not Path(str(fixture)).is_file()):
+            errors.append("Mock service fixture corpus does not exist: {}".format(fixture or "fixtureCorpusPath"))
     return errors
 
 

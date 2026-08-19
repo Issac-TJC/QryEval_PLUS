@@ -120,7 +120,11 @@ class Agent:
                     prompt_lines.append(
                         f'{qid}: {json.dumps(qinfo["prompt_rag"], ensure_ascii=True)}')
                 continue
-            question = qinfo.get("qstring", "")
+            question = (
+                qinfo.get("original_qstring", qinfo.get("qstring", ""))
+                if self._require_bool("rag:useOriginalQuestion", default=False)
+                else qinfo.get("qstring", "")
+            )
             ranking = qinfo.get("ranking", [])
             query_vector = self._encoder.encode_text(question)
             passages = self._select_passages(
@@ -136,8 +140,11 @@ class Agent:
                     "model": response.model,
                     "success": True,
                     "fallback_used": False,
+                    "calls": 1,
+                    "cache_hits": int(bool(response.cache_hit)),
                     "duration_seconds": response.duration_seconds,
                     "usage": response.usage,
+                    "estimated_cost_usd": response.estimated_cost_usd,
                     "request_id": response.request_id,
                 }
             except LLMProviderError as exc:
@@ -351,4 +358,7 @@ def create_agent(parameters, provider=None):
     if agent_type == "agentic_rag":
         from qryeval_plus.agentic import AgenticRagAgent
         return AgenticRagAgent(parameters, provider=provider)
+    if agent_type == "rewrite_rag":
+        from qryeval_plus.agentic.rewrite import RewriteRagAgent
+        return RewriteRagAgent(parameters, provider=provider)
     raise ValueError("Unknown agent type '{}'.".format(agent_type))

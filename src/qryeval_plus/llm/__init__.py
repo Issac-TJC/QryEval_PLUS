@@ -6,6 +6,7 @@ from qryeval_plus.llm.base import (
     LLMResponse,
     LLMToolCall,
 )
+from qryeval_plus.llm.cached import BudgetExceeded, CachedBudgetProvider
 from qryeval_plus.llm.factory import create_provider, provider_summary
 
 __all__ = [
@@ -13,6 +14,8 @@ __all__ = [
     "LLMProviderError",
     "LLMResponse",
     "LLMToolCall",
+    "BudgetExceeded",
+    "CachedBudgetProvider",
     "create_provider",
     "provider_summary",
 ]

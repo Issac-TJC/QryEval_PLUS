@@ -396,12 +396,42 @@ API key 只能临时放入 `DEEPSEEK_API_KEY`，不应写入配置、日志、�
 
 - 原项目与迁移说明：[`MIGRATION.md`](../MIGRATION.md)
 - Agentic RAG 设计：[`docs/AGENTIC_RAG.md`](AGENTIC_RAG.md)
-- 正式四系统结果：[`HW5_Agent_Comparison.csv`](../outputs/benchmarks/hw5-agent/questions-40/HW5_Agent_Comparison.csv)
-- 自动生成的实验摘要：[`HW5_AGENT_REPORT.md`](../outputs/benchmarks/hw5-agent/questions-40/HW5_AGENT_REPORT.md)
-- 逐题答案、指标和增益：[`per_question_comparison.csv`](../outputs/benchmarks/hw5-agent/questions-40/per_question_comparison.csv)
-- 异常与恢复记录：[`RUN_NOTES.md`](../outputs/benchmarks/hw5-agent/questions-40/RUN_NOTES.md)
-- 环境与模型快照：[`environment.json`](../outputs/benchmarks/hw5-agent/questions-40/environment.json)、[`benchmark_snapshot.json`](../outputs/benchmarks/hw5-agent/questions-40/benchmark_snapshot.json)
-- 结果完整性校验：[`artifact_checksums.sha256`](../outputs/benchmarks/hw5-agent/questions-40/artifact_checksums.sha256)
+- 正式四系统结果（版本化副本）：[`dev40_comparison.csv`](../benchmarks/triviaqa318/dev40_comparison.csv)
+- 自动生成的实验摘要（版本化副本）：[`dev40_agentic_report.md`](../benchmarks/triviaqa318/dev40_agentic_report.md)
+- 逐题答案、指标和增益（版本化副本）：[`dev40_per_question.csv`](../benchmarks/triviaqa318/dev40_per_question.csv)
+- 异常与恢复记录：[`dev40_run_notes.md`](../benchmarks/triviaqa318/dev40_run_notes.md)
+- 新实验协议与 corpus 审计：[`EXPERIMENT_PROTOCOL.md`](EXPERIMENT_PROTOCOL.md)、[`corpus_manifest.json`](../benchmarks/triviaqa318/corpus_manifest.json)
 - 历史只读参考：[`HW5_Exp3_CustomExperiments.csv`](../benchmarks/hw5/reference/HW5_Exp3_CustomExperiments.csv)
 
 历史 CSV 的 SHA-256 为 `97d3f136d4198ede2bcd31509156029e813eade98ceae833d5b579ea284b0dda`；40 题 query SHA-256 为 `4dac3d3dad428a5b05be30d63cc83a4e27d2ee90c42c1f9c45e45931b95d0212`；版本化 BM25 run SHA-256 为 `d801f5dfc2fc1cf7104445d82fe9872933d0482604f0422b55bd54976ff232a0`。
+
+## 12. 2026-08-19：TriviaQA-318 锁定测试补充
+
+在上述 40 题开发实验之后，项目冻结了更窄的研究问题：在 corpus、BM25 参数、回答模型、Prompt、上下文和调用上限一致时，选择性进行至多一次查询改写，能否获得比固定检索、RM3 PRF 或无条件 LLM 改写更好的质量—成本权衡。原 40 题作为开发集，剩余 278 题只在协议和实现冻结后运行一次。
+
+### 12.1 锁定测试结果
+
+| 系统 | EM | F1 | MRR | P@1 | P@5 | p50 / p95 | token/题 | 估算 cost/题 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Fixed BM25 | 74.46 | 82.38 | 0.7924 | 0.7194 | 0.5338 | 0.99s / 1.23s | 1,242.6 | $0.000175 |
+| BM25 + RM3 PRF | 74.82 | 83.13 | 0.7606 | 0.6835 | 0.5432 | 1.10s / 1.49s | 1,248.0 | $0.000151 |
+| Always Rewrite | **76.62** | 84.17 | **0.8518** | **0.8022** | **0.6554** | 10.35s / 16.07s | 3,054.9 | $0.000435 |
+| Adaptive Rewrite | 75.90 | **84.18** | 0.8200 | 0.7482 | 0.5806 | 7.89s / 13.86s | 3,072.4 | $0.000294 |
+
+Fixed 与 PRF 的 latency 是现有 metadata 记录的回答阶段；Always/Adaptive 是 controller、检索和回答的端到端 Agent latency，因此前两者与后两者不能被解释成纯检索开销的严格横向对比。Adaptive 在 44.96% 的题目上执行改写，F1 点估计与 Always Rewrite 基本相同，同时 p95 低 13.8%，实际估算 cost/题低 32.5%。
+
+相对 Fixed BM25 的配对结果如下：
+
+- RM3 PRF：ΔF1 +0.75，95% CI `[-1.41, 2.99]`，Holm 校正 p=0.5076；
+- Always Rewrite：ΔF1 +1.79，95% CI `[-0.67, 4.31]`，Holm 校正 p=0.3140；
+- Adaptive Rewrite：ΔF1 +1.79，95% CI `[-0.30, 4.03]`，Holm 校正 p=0.3087。
+
+三者的置信区间均跨 0，因此不能宣称显著优于 Fixed。可以支持的结论是：选择性改写保留了无条件改写的答案 F1 点估计，并降低了延迟和外部 API 费用；相关文档在基线前 10 名之外时收益更大，但该分层样本较小，应视为机制线索。
+
+### 12.2 运行审计与异常处理
+
+先运行 5 题 gate，确认答案、qid、缓存和预算记录正常后才扩跑。gate 与正式运行暴露并修复了三个检索执行问题：Lucene 索引没有 term vector 时 PRF expansion 为空；自然语言句末点号被误识别为字段语法；未闭合括号在初始查询和 PRF 结构化查询中触发解析失败。修复均只规范化执行路径，没有查看测试聚合结果、修改 gold、Prompt、模型、BM25 参数或决策规则；40 题开发结果在修复后逐文件哈希保持不变。
+
+四个测试系统最终均产生 278 个唯一 qid，空答案、provider/tool error 和预算耗尽均为 0。外部请求共 1,405 次、2,067,616 tokens，按 manifest 价格快照估算总费用 $0.29305990，未触及 2,000 请求和 10,000,000 tokens 的硬上限。Python 3.11 和 Python 3.9 测试套件均通过；发布包及协议证据 checksum 全部通过。
+
+测试发布包见 [`benchmarks/triviaqa318/test-release`](../benchmarks/triviaqa318/test-release)。项目仍只有单数据集、单机单 worker、无真实用户；服务证据是 production-like，不应写成真实生产部署或跨领域泛化。

@@ -1,0 +1,35 @@
+{
+  "queryFilePath": "../../datasets/triviaqa/protocol/dev.qry",
+  "splits": {
+    "dev": "../../datasets/triviaqa/protocol/dev.qry",
+    "test": "../../datasets/triviaqa/protocol/test.qry",
+    "all": "../../datasets/triviaqa/protocol/all.qry"
+  },
+  "splitManifestPath": "../../datasets/triviaqa/protocol/split_manifest.json",
+  "protocolLockPath": "../../benchmarks/triviaqa318/protocol_lock.json",
+  "qrelPath": "../../data/evaluation/triviaqa/verified-wikipedia-dev.qrel",
+  "goldPath": "../../data/evaluation/triviaqa/verified-wikipedia-dev.json",
+  "trecEvalPath": "../../data/tools/trec_eval",
+  "outputRoot": "../../outputs/benchmarks/triviaqa318",
+  "protocol": {
+    "primaryMetric": "f1",
+    "bootstrapSamples": 10000,
+    "randomizationSamples": 10000,
+    "seed": 20260814,
+    "testIsLocked": true
+  },
+  "pricing": {
+    "snapshotDate": "2026-08-19",
+    "inputPerMillionUsd": 0.14,
+    "outputPerMillionUsd": 0.28,
+    "cacheHitInputPerMillionUsd": 0.0028,
+    "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "note": "Conservative cost accounting charges all externally requested input at the cache-miss price."
+  },
+  "systems": [
+    {"name": "fixed_bm25", "label": "Fixed BM25", "baseline": true, "config": "../triviaqa318/fixed_bm25.json"},
+    {"name": "bm25_prf", "label": "BM25 + RM3 PRF", "config": "../triviaqa318/bm25_prf.json"},
+    {"name": "always_rewrite", "label": "Always LLM Rewrite", "config": "../triviaqa318/always_rewrite.json"},
+    {"name": "adaptive_rewrite", "label": "Adaptive LLM Rewrite", "config": "../triviaqa318/adaptive_rewrite.json"}
+  ]
+}

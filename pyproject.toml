@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qryeval-plus"
-version = "0.3.0"
-description = "Configurable information retrieval, reranking, and RAG experiments"
+version = "0.4.0"
+description = "Cost-aware, reproducible agentic retrieval evaluation and local serving"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
@@ -23,6 +23,12 @@ test = ["pytest>=7.0", "build>=1.0"]
 agent = [
   "pydantic>=2.8,<3; python_version >= '3.11'",
   "langgraph>=1.0,<2; python_version >= '3.11'",
+]
+serve = [
+  "fastapi>=0.115,<1; python_version >= '3.11'",
+  "uvicorn>=0.30,<1; python_version >= '3.11'",
+  "prometheus-client>=0.21,<1; python_version >= '3.11'",
+  "httpx>=0.27,<1; python_version >= '3.11'",
 ]
 
 [project.scripts]

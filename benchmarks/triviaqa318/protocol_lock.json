@@ -1,0 +1,31 @@
+{
+  "files": {
+    "configs/benchmarks/triviaqa318.json": "1a5c092226832a8206dda81aca4393e3b774e79a3efa76bb5880807152e7f2df",
+    "configs/triviaqa318/adaptive_rewrite.json": "e8d2ae8767e5e19a84c6212c114a232d7034783c36f1009e4c19d384ae24dac7",
+    "configs/triviaqa318/always_rewrite.json": "6a8ced5330bf3dcb235f1d5c8e3349c7de60b67ea6af4152210bc8ea062afa4a",
+    "configs/triviaqa318/bm25_prf.json": "5ccd26f68537026a880cfbb2269996403f01230d7ec8d3ff42d7426c78365144",
+    "configs/triviaqa318/fixed_bm25.json": "56411593154e0371e4e5e33f4b555a1cf14e50d66ea00c4fe7a6c7aa134e264a",
+    "datasets/triviaqa/protocol/all.qry": "8130b28f7872ac59789ddaf456eaca27b8da8d4fa53d0a763b9480e793fa9f21",
+    "datasets/triviaqa/protocol/dev.qry": "76ca23ef58cb14c36c739ccd26ebda829483f5be309680a8ce9274329033ae23",
+    "datasets/triviaqa/protocol/split_manifest.json": "f1901e87eda8e1c94ec62529e2c309f902db5aaba2c10fdc5477ff7c69862f4d",
+    "datasets/triviaqa/protocol/test.qry": "90322cec9c881ebbbd18ffeaa7e63681eee75e33af1ca1f44c6a095c7ea024d7",
+    "src/qryeval_plus/agentic/rewrite.py": "2858c41aa9cf9fad8c34458f4bcd96df506ed93bb9125f0fda578847109d0912",
+    "src/qryeval_plus/agentic/tools.py": "ceffce9f9ac220269ee5e140ac28c5e5ca1f0563532a575f2c620185b3f6eb2e",
+    "src/qryeval_plus/benchmark.py": "938b990d7e7eb048f00635e5b2eb56fde330972b7a31557c94ac4ae496172bb7",
+    "src/qryeval_plus/grounding.py": "15a21efbcd9d2c86f871de9b94df73f9069fd0ed0ab1a7fdf09de0e46be52135",
+    "src/qryeval_plus/llm/cached.py": "62a26523b279cd5fd73bec2445ac4196938283f9c153e1b048916e6d526ac30f",
+    "src/qryeval_plus/llm/factory.py": "b13e153ea7ccbe3be4eef47da746aa8a6bda29847ff0abb4b6c201af12100c83",
+    "src/qryeval_plus/llm/openai_compatible.py": "eb92f32bdf9a33c93f81ee0b18fcc24fe6a4f9e4fd13574b39718ba309c1e6cd",
+    "src/qryeval_plus/protocol.py": "67bd627152f6f5b825876c3369c200c3b169afceda58a8a0056169b81d9fd6c8",
+    "src/qryeval_plus/query/QryParser.py": "7776e52de4ecef08eb730458853bf75fe7fc9cebbdb3a20c8efb67207badb2a9",
+    "src/qryeval_plus/rag/Agent.py": "bc314284039a771c3475f8a80eaad8b5822b004322dd75bc3d922048827a0622",
+    "src/qryeval_plus/rag/RagPrompt.py": "654ae275e8c24d2e27358888a0d16332afe375eb3c843168265899cd11cfaa8d",
+    "src/qryeval_plus/retrieval/Ranker.py": "1100287fa65e08c5056abab2fd6efb7e5bec11900b9c0f20ae31d3eddaff5e60",
+    "src/qryeval_plus/rewrite/RewriteWithPrf.py": "79a3ef89aef8123ce4b836f1b4759c59dbdc2c2c19638a9afdb69e66c04c8db5",
+    "src/qryeval_plus/statistics.py": "2286c10dd8d85ce5ae5768bc4c5cbf49a02236a3ec3043155b739006f003b69b"
+  },
+  "frozen_at": "2026-08-19",
+  "note": "Changing any listed file invalidates locked test execution until an intentional new development freeze.",
+  "protocol": "triviaqa-318-v1",
+  "root": "../.."
+}

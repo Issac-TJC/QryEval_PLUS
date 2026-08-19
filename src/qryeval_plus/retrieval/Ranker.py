@@ -95,7 +95,7 @@ class Ranker:
             # Prepare to evaluate a query
             qstring = batch[qid]["qstring"]
             print(f'{qid}: {qstring}', flush=True)
-            qstring = f'{self._model.defaultQrySop}({qstring})'
+            qstring = _prepare_bow_query(qstring, self._model.defaultQrySop)
             q = QryParser.getQuery(qstring)
             print(f'    ==> {str(q)}', flush=True)
             q.initialize(self._model)
@@ -112,3 +112,13 @@ class Ranker:
             batch[qid]['ranking'] = ranking.get_ranking()
 
         return(batch)
+
+
+def _prepare_bow_query(qstring, default_operator):
+    """Normalize natural-language input without altering structured queries."""
+    from qryeval_plus.query.QryParser import QryParser
+
+    value = str(qstring).strip()
+    if not value.startswith('#'):
+        value = " ".join(QryParser.tokenizeString(value))
+    return '{}({})'.format(default_operator, value)

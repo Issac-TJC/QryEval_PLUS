@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import html
 import json
 import platform
 import random
 import re
+import shutil
 import string
 import subprocess
 import sys
@@ -19,9 +21,22 @@ from typing import Any, Dict, Iterable, List
 
 from qryeval_plus.config import ConfigError, load_config, ordered_tasks, validate_config
 from qryeval_plus.pipeline import run_pipeline
+from qryeval_plus.statistics import (
+    classify_error,
+    holm_adjust,
+    paired_bootstrap,
+    paired_randomization_test,
+    percentile,
+)
 
 
-def run_benchmark(manifest_path: str, *, limit: int, resume: bool = False):
+def run_benchmark(
+    manifest_path: str,
+    *,
+    limit: int | None = None,
+    split: str | None = None,
+    resume: bool = False,
+):
     manifest_file = Path(manifest_path).expanduser().resolve()
     loaded_manifest = load_config(manifest_file)
     errors = validate_config(loaded_manifest, check_assets=True)
@@ -30,12 +45,16 @@ def run_benchmark(manifest_path: str, *, limit: int, resume: bool = False):
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     base = manifest_file.parent
     _verify_historical_reference(base, manifest)
-    query_source = _path(base, manifest["queryFilePath"])
+    if split in {"test", "all"}:
+        _verify_protocol_lock(base, manifest)
+    query_source, split_label = _query_source(base, manifest, split)
     query_lines = query_source.read_text(encoding="utf-8").splitlines()
+    limit = len(query_lines) if limit is None else int(limit)
     if limit <= 0 or limit > len(query_lines):
         raise ConfigError("--limit must be between 1 and {}.".format(len(query_lines)))
 
-    output_root = _path(base, manifest["outputRoot"]) / "questions-{}".format(limit)
+    output_label = split_label if split_label and limit == len(query_lines) else "questions-{}".format(limit)
+    output_root = _path(base, manifest["outputRoot"]) / output_label
     output_root.mkdir(parents=True, exist_ok=True)
     query_path = output_root / "queries.qry"
     query_path.write_text("\n".join(query_lines[:limit]) + "\n", encoding="utf-8")
@@ -60,20 +79,125 @@ def run_benchmark(manifest_path: str, *, limit: int, resume: bool = False):
             gold_path=_path(base, manifest["goldPath"]),
             trec_eval_path=_path(base, manifest["trecEvalPath"]),
             resume=resume,
+            pricing=manifest.get("pricing", {}),
         )
         systems.append(result)
 
     _write_comparison(output_root, systems)
     _write_per_question(output_root, systems, qids, questions)
+    _write_error_analysis(output_root, systems, qids)
     _write_report(output_root, systems, qids, questions)
-    _write_environment(output_root, manifest_file, manifest, systems)
+    _write_pareto(output_root, systems, len(qids))
+    _write_environment(
+        output_root,
+        manifest_file,
+        manifest,
+        systems,
+        query_source=query_source,
+        split=split_label,
+    )
     _write_artifact_checksums(output_root)
     return output_root
 
 
+def estimate_budget(manifest_path: str, *, split: str | None = None, limit: int | None = None):
+    manifest_file = Path(manifest_path).expanduser().resolve()
+    manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    query_source, label = _query_source(manifest_file.parent, manifest, split)
+    count = len(query_source.read_text(encoding="utf-8").splitlines())
+    count = count if limit is None else min(int(limit), count)
+    systems = []
+    total = 0
+    for system in manifest.get("systems", []):
+        if system.get("historical"):
+            continue
+        config = load_config(_path(manifest_file.parent, system["config"]))
+        calls = 1
+        for _, role, task in ordered_tasks(config):
+            if role == "agent" and task.get("type") == "rewrite_rag":
+                calls = 2
+        maximum = calls * count
+        total += maximum
+        systems.append({"name": system["name"], "questions": count, "max_requests": maximum})
+    return {"split": label, "questions": count, "systems": systems, "max_requests": total}
+
+
+def publish_artifacts(output_root: str | Path, release_dir: str | Path) -> Path:
+    """Copy only scrubbed, lightweight evidence from a completed benchmark."""
+    source = Path(output_root).expanduser().resolve()
+    target = Path(release_dir).expanduser().resolve()
+    required = [
+        "HW5_Agent_Comparison.csv", "HW5_AGENT_REPORT.md",
+        "per_question_comparison.csv", "error_analysis.csv",
+        "environment.json", "benchmark_snapshot.json",
+    ]
+    missing = [name for name in required if not (source / name).is_file()]
+    if missing:
+        raise ConfigError("Cannot publish incomplete benchmark: {}".format(", ".join(missing)))
+    target.mkdir(parents=True, exist_ok=True)
+    for name in required[:4]:
+        shutil.copyfile(source / name, target / name)
+    for name in ("pareto_points.csv", "pareto_quality_efficiency.svg"):
+        if (source / name).is_file():
+            shutil.copyfile(source / name, target / name)
+    for name in required[4:]:
+        payload = _redact_local_paths(json.loads((source / name).read_text(encoding="utf-8")))
+        (target / name).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    metrics = {}
+    for path in sorted(source.glob("*/metrics.json")):
+        metrics[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
+    (target / "system_metrics.json").write_text(
+        json.dumps(metrics, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    _write_artifact_checksums(target)
+    return target
+
+
+def _redact_local_paths(value):
+    if isinstance(value, dict):
+        return {key: _redact_local_paths(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact_local_paths(item) for item in value]
+    if isinstance(value, str) and value.startswith("/"):
+        return "<LOCAL_ASSET>/" + Path(value).name
+    return value
+
+
+def _query_source(base, manifest, split):
+    if split:
+        splits = manifest.get("splits", {})
+        if split not in splits:
+            raise ConfigError("Unknown benchmark split '{}'.".format(split))
+        return _path(base, splits[split]), split
+    if not manifest.get("queryFilePath"):
+        raise ConfigError("Benchmark requires queryFilePath when --split is omitted.")
+    return _path(base, manifest["queryFilePath"]), None
+
+
+def _verify_protocol_lock(base: Path, manifest: Dict[str, Any]) -> None:
+    value = manifest.get("protocolLockPath")
+    if not value:
+        raise ConfigError("Locked test execution requires protocolLockPath.")
+    lock_path = _path(base, value)
+    lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    root = (lock_path.parent / lock.get("root", ".")).resolve()
+    mismatches = []
+    for relative, expected in lock.get("files", {}).items():
+        path = root / relative
+        actual = _sha256(path) if path.is_file() else "missing"
+        if actual != expected:
+            mismatches.append(relative)
+    if mismatches:
+        raise ConfigError(
+            "Frozen test protocol changed: {}. Run development again and intentionally regenerate the lock before test.".format(
+                ", ".join(mismatches)
+            )
+        )
+
+
 def _run_system(
     *, system, base, output_root, query_path, qids, qrel_path,
-    gold_path, trec_eval_path, resume,
+    gold_path, trec_eval_path, resume, pricing,
 ):
     name = system["name"]
     system_dir = output_root / name
@@ -94,13 +218,18 @@ def _run_system(
         parameters = load_config(_path(base, system["config"]))
         parameters["queryFilePath"] = str(query_path)
         for _, role, task in ordered_tasks(parameters):
+            if role == "agent" and task["type"] in {"rag", "agentic_rag", "rewrite_rag"}:
+                task["rag:cachePath"] = str(output_root.parent / "llm_cache.sqlite3")
+                task["rag:cacheNamespace"] = output_root.name
+                task["rag:inputPricePerMillion"] = float(pricing.get("inputPerMillionUsd", 0))
+                task["rag:outputPricePerMillion"] = float(pricing.get("outputPerMillionUsd", 0))
             if role == "output" and task["type"] == "trec_eval":
                 task["outputPath"] = str(run_path)
             elif role == "output" and task["type"] == "triviaqa_evaluation":
                 task["outputPath"] = str(answers_path)
                 task["metadataPath"] = str(metadata_path)
                 task["promptPath"] = str(system_dir / "prompts.txt")
-            elif role == "agent" and task["type"] == "agentic_rag":
+            elif role == "agent" and task["type"] in {"agentic_rag", "rewrite_rag"}:
                 task["agent:trajectoryPath"] = str(system_dir / "trajectory.jsonl")
                 task["agent:checkpointPath"] = str(system_dir / "checkpoint.jsonl")
                 task["agent:resume"] = bool(resume)
@@ -214,8 +343,6 @@ def _agent_metrics(data: Dict[str, Any], qids: List[str]):
     records = [data.get(qid, {}) for qid in qids]
     agent_rows = [row.get("agent") for row in records]
     agent_rows = [row for row in agent_rows if isinstance(row, dict)]
-    if not agent_rows:
-        return {}
     tool_counts = Counter()
     stop_reasons = Counter()
     for row in agent_rows:
@@ -224,9 +351,19 @@ def _agent_metrics(data: Dict[str, Any], qids: List[str]):
             tool_counts[str(name)] += int(count)
     n = len(qids)
     token_totals = [_usage_total(row.get("usage", {})) for row in records]
+    end_to_end = [
+        float(row.get("latency", {}).get("total_seconds", row.get("duration_seconds", 0)) or 0)
+        for row in records
+    ]
+    costs = [float(row.get("estimated_cost_usd", 0) or 0) for row in records]
+    cache_hits = [int(row.get("cache_hits", 0) or 0) for row in records]
+    rewrite_rows = [row.get("rewrite") for row in records if isinstance(row.get("rewrite"), dict)]
     return {
         "avg_turns": sum(int(row.get("turns", 0)) for row in agent_rows) / n,
-        "avg_model_calls": sum(int(row.get("calls", 0)) for row in records) / n,
+        "avg_model_calls": sum(
+            int(row.get("calls", 1 if row.get("success") is not None else 0))
+            for row in records
+        ) / n,
         "avg_tool_calls": sum(int(row.get("tool_calls", 0)) for row in agent_rows) / n,
         "avg_retrieval_calls": sum(
             int(row.get("retrieval_calls", 0)) for row in agent_rows
@@ -241,6 +378,17 @@ def _agent_metrics(data: Dict[str, Any], qids: List[str]):
         "avg_llm_latency_seconds": sum(
             float(row.get("duration_seconds", 0) or 0) for row in records
         ) / n,
+        "latency_p50_seconds": percentile(end_to_end, 0.50),
+        "latency_p95_seconds": percentile(end_to_end, 0.95),
+        "latency_p99_seconds": percentile(end_to_end, 0.99),
+        "avg_estimated_cost_usd": sum(costs) / n,
+        "total_estimated_cost_usd": sum(costs),
+        "cache_hits": sum(cache_hits),
+        "grounding_status": dict(Counter(str(row.get("grounding_status", "unknown")) for row in records)),
+        "rewrite_rate": (
+            sum(bool(row.get("rewritten_query")) for row in rewrite_rows) / len(rewrite_rows)
+            if rewrite_rows else 0.0
+        ),
         "tool_errors": sum(int(row.get("tool_errors", 0)) for row in agent_rows),
         "tool_error_rate": sum(
             int(row.get("tool_errors", 0)) > 0 for row in agent_rows
@@ -258,7 +406,9 @@ def _agent_metrics(data: Dict[str, Any], qids: List[str]):
             name: count / n for name, count in sorted(tool_counts.items())
         },
         "empty_answer_rate": sum(
-            not bool(data.get(qid, {}).get("success")) for qid in qids
+            data.get(qid, {}).get("success") is False
+            or data.get(qid, {}).get("grounding_status") == "abstained"
+            for qid in qids
         ) / n,
     }
 
@@ -336,7 +486,7 @@ def _write_report(
     runnable = [system for system in systems if not system.get("historical")]
     baseline = next((item for item in runnable if item.get("baseline")), None)
     lines = [
-        "# HW5 Agentic RAG comparison",
+        "# Agentic Retrieval comparison",
         "",
         "The historical column is descriptive. Agent lift is attributed only against the contemporaneous fixed baseline.",
         *(
@@ -357,15 +507,27 @@ def _write_report(
     if baseline:
         lines.extend(["", "## Paired F1 differences", ""])
         base_scores = baseline["metrics"].get("per_query", {})
+        raw_pvalues = {}
+        for system in runnable:
+            if system is baseline:
+                continue
+            raw_pvalues[system["name"]] = paired_randomization_test(
+                [100.0 * base_scores[qid]["f1"] for qid in qids],
+                [100.0 * system["metrics"]["per_query"][qid]["f1"] for qid in qids],
+            )
+        adjusted_pvalues = holm_adjust(raw_pvalues)
         for system in runnable:
             if system is baseline:
                 continue
             scores = system["metrics"].get("per_query", {})
-            delta, low, high = _bootstrap_delta(base_scores, scores, qids)
+            delta, low, high = paired_bootstrap(
+                [100.0 * base_scores[qid]["f1"] for qid in qids],
+                [100.0 * scores[qid]["f1"] for qid in qids],
+            )
             em_delta = system["metrics"]["exact"] - baseline["metrics"]["exact"]
-            if low > 0:
+            if low > 0 and adjusted_pvalues[system["name"]] < 0.05:
                 conclusion = "statistically supported F1 improvement"
-            elif high < 0:
+            elif high < 0 and adjusted_pvalues[system["name"]] < 0.05:
                 conclusion = "statistically supported F1 degradation"
             elif delta > 0:
                 conclusion = "positive point estimate, but evidence is insufficient"
@@ -378,10 +540,30 @@ def _write_report(
             else:
                 conclusion = "F1 and EM tied"
             lines.append(
-                "- {}: ΔF1={:.2f}, ΔEM={:.2f}, 95% F1 CI [{:.2f}, {:.2f}] — {}.".format(
-                    system["label"], delta, em_delta, low, high, conclusion
+                "- {}: ΔF1={:.2f}, ΔEM={:.2f}, 95% F1 CI [{:.2f}, {:.2f}], "
+                "randomization p={:.4f}, Holm-adjusted p={:.4f} — {}.".format(
+                    system["label"], delta, em_delta, low, high,
+                    raw_pvalues[system["name"]], adjusted_pvalues[system["name"]], conclusion
                 )
             )
+        lines.extend(["", "## Baseline difficulty strata", ""])
+        strata = {
+            "relevant at rank 1": [qid for qid in qids if base_scores[qid]["MRR"] == 1.0],
+            "relevant at ranks 2-10": [qid for qid in qids if 0.1 <= base_scores[qid]["MRR"] < 1.0],
+            "first relevant below rank 10": [qid for qid in qids if 0.0 < base_scores[qid]["MRR"] < 0.1],
+            "not retrieved in judged depth": [qid for qid in qids if base_scores[qid]["MRR"] == 0.0],
+        }
+        for label, selected in strata.items():
+            pieces = []
+            for system in runnable:
+                if system is baseline or not selected:
+                    continue
+                scores = system["metrics"]["per_query"]
+                delta = 100.0 * sum(
+                    scores[qid]["f1"] - base_scores[qid]["f1"] for qid in selected
+                ) / len(selected)
+                pieces.append("{} ΔF1 {:+.2f}".format(system["label"], delta))
+            lines.append("- {} (n={}): {}.".format(label, len(selected), "; ".join(pieces) or "n/a"))
         if len(qids) == 40:
             holdout = qids[5:]
             lines.extend(["", "## 35-question holdout", ""])
@@ -405,18 +587,18 @@ def _write_report(
         if agents:
             lines.extend([
                 "", "## Agent operations", "",
-                "| System | Model calls | Tool calls | Retrievals | Tokens | LLM latency (s) | Tool error rate | Budget-limit rate | Max-step rate | Empty rate |",
-                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+                "| System | Model calls | Retrievals | Tokens | p50 (s) | p95 (s) | p99 (s) | Cost/query | Cache hits | Rewrite rate | Error rate |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
             ])
             for system in agents:
                 m = system["metrics"]
                 lines.append(
-                    "| {} | {:.2f} | {:.2f} | {:.2f} | {:.1f} | {:.2f} | {:.2%} | {:.2%} | {:.2%} | {:.2%} |".format(
-                        system["label"], m["avg_model_calls"], m["avg_tool_calls"],
-                        m["avg_retrieval_calls"], m["avg_total_tokens"],
-                        m["avg_llm_latency_seconds"], m["tool_error_rate"],
-                        m["budget_exhaustion_rate"], m["max_step_rate"],
-                        m["empty_answer_rate"],
+                    "| {} | {:.2f} | {:.2f} | {:.1f} | {:.2f} | {:.2f} | {:.2f} | ${:.6f} | {} | {:.2%} | {:.2%} |".format(
+                        system["label"], m["avg_model_calls"], m["avg_retrieval_calls"],
+                        m["avg_total_tokens"], m["latency_p50_seconds"],
+                        m["latency_p95_seconds"], m["latency_p99_seconds"],
+                        m["avg_estimated_cost_usd"],
+                        m["cache_hits"], m["rewrite_rate"], m["tool_error_rate"],
                     )
                 )
             lines.extend(["", "Tool-use totals:"])
@@ -437,8 +619,8 @@ def _write_report(
                 key=lambda qid: scores[qid]["f1"] - base_scores[qid]["f1"],
                 reverse=True,
             )
-            gains = [qid for qid in ranked if scores[qid]["f1"] > base_scores[qid]["f1"]][:3]
-            losses = [qid for qid in reversed(ranked) if scores[qid]["f1"] < base_scores[qid]["f1"]][:3]
+            gains = [qid for qid in ranked if scores[qid]["f1"] > base_scores[qid]["f1"]][:15]
+            losses = [qid for qid in reversed(ranked) if scores[qid]["f1"] < base_scores[qid]["f1"]][:15]
             lines.append("### {}".format(system["label"]))
             lines.append("")
             lines.extend(_comparison_examples("Largest gains", gains, questions, base_scores, scores))
@@ -458,6 +640,131 @@ def _write_report(
                     qid, reason or "unknown", " — " + detail if detail else ""
                 ))
     (output_root / "HW5_AGENT_REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _write_error_analysis(output_root, systems, qids):
+    runnable = [system for system in systems if not system.get("historical")]
+    baseline = next((item for item in runnable if item.get("baseline")), None)
+    if not baseline:
+        return
+    rows = []
+    base_scores = baseline["metrics"]["per_query"]
+    for system in runnable:
+        if system is baseline:
+            continue
+        scores = system["metrics"]["per_query"]
+        metadata = system.get("metadata", {})
+        for qid in qids:
+            row = metadata.get(qid, {})
+            rewrite = row.get("rewrite", {})
+            rows.append({
+                "qid": qid,
+                "system": system["name"],
+                "category": classify_error(
+                    baseline_f1=base_scores[qid]["f1"],
+                    candidate_f1=scores[qid]["f1"],
+                    baseline_mrr=base_scores[qid]["MRR"],
+                    candidate_mrr=scores[qid]["MRR"],
+                    rewritten=bool(rewrite.get("rewritten_query")),
+                    grounding_status=row.get("grounding_status"),
+                ),
+                "delta_f1": 100.0 * (scores[qid]["f1"] - base_scores[qid]["f1"]),
+                "baseline_mrr": base_scores[qid]["MRR"],
+                "candidate_mrr": scores[qid]["MRR"],
+                "rewritten": bool(rewrite.get("rewritten_query")),
+                "grounding_status": row.get("grounding_status", "unknown"),
+            })
+    path = output_root / "error_analysis.csv"
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]) if rows else ["qid"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _write_pareto(output_root: Path, systems: List[Dict[str, Any]], query_count: int):
+    """Write dependency-free quality/efficiency evidence for the formal report."""
+    points = []
+    for system in systems:
+        if system.get("historical"):
+            continue
+        metrics = system.get("metrics", {})
+        points.append({
+            "system": system["label"],
+            "f1": float(metrics.get("f1", 0) or 0),
+            "p95_latency_seconds": float(metrics.get("latency_p95_seconds", 0) or 0),
+            "tokens_per_query": float(metrics.get("avg_total_tokens", 0) or 0),
+            "cost_per_query_usd": float(metrics.get("avg_estimated_cost_usd", 0) or 0),
+            "wall_seconds_per_query": float(metrics.get("time_seconds", 0) or 0) / max(query_count, 1),
+        })
+    if not points:
+        return
+    csv_path = output_root / "pareto_points.csv"
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(points[0]))
+        writer.writeheader()
+        writer.writerows(points)
+
+    panels = [
+        ("p95_latency_seconds", "p95 recorded latency (s)"),
+        ("tokens_per_query", "tokens / query"),
+        ("cost_per_query_usd", "estimated USD / query"),
+    ]
+    width, height, panel_width = 1200, 420, 400
+    svg = [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="0 0 {} {}">'.format(width, height, width, height),
+        '<rect width="100%" height="100%" fill="#ffffff"/>',
+        '<style>text{font-family:Arial,sans-serif;fill:#172033}.axis{stroke:#64748b;stroke-width:1}.frontier{fill:none;stroke:#0f766e;stroke-width:2}.point{fill:#2563eb;stroke:#fff;stroke-width:2}</style>',
+    ]
+    y_min = max(0.0, min(point["f1"] for point in points) - 5.0)
+    y_max = min(100.0, max(point["f1"] for point in points) + 5.0)
+    if y_max <= y_min:
+        y_max = y_min + 1.0
+    for index, (key, x_label) in enumerate(panels):
+        left = index * panel_width + 58
+        right = (index + 1) * panel_width - 24
+        top, bottom = 42, 342
+        x_max = max(point[key] for point in points) or 1.0
+
+        def xy(point):
+            x = left + (right - left) * point[key] / x_max
+            y = bottom - (bottom - top) * (point["f1"] - y_min) / (y_max - y_min)
+            return x, y
+
+        frontier = [
+            point for point in points
+            if not any(
+                other[key] <= point[key] and other["f1"] >= point["f1"]
+                and (other[key] < point[key] or other["f1"] > point["f1"])
+                for other in points if other is not point
+            )
+        ]
+        frontier.sort(key=lambda point: point[key])
+        svg.extend([
+            '<text x="{}" y="24" font-size="16" font-weight="bold" text-anchor="middle">Quality vs {}</text>'.format((left + right) / 2, html.escape(x_label)),
+            '<line class="axis" x1="{}" y1="{}" x2="{}" y2="{}"/>'.format(left, bottom, right, bottom),
+            '<line class="axis" x1="{}" y1="{}" x2="{}" y2="{}"/>'.format(left, top, left, bottom),
+            '<text x="{}" y="382" font-size="12" text-anchor="middle">{}</text>'.format((left + right) / 2, html.escape(x_label)),
+            '<text x="{}" y="{}" font-size="12" text-anchor="middle" transform="rotate(-90 {} {})">answer F1</text>'.format(left - 42, (top + bottom) / 2, left - 42, (top + bottom) / 2),
+            '<text x="{}" y="{}" font-size="10" text-anchor="end">{:.1f}</text>'.format(left - 6, top + 4, y_max),
+            '<text x="{}" y="{}" font-size="10" text-anchor="end">{:.1f}</text>'.format(left - 6, bottom + 4, y_min),
+            '<text x="{}" y="{}" font-size="10" text-anchor="end">{:.4g}</text>'.format(right, bottom + 16, x_max),
+        ])
+        if frontier:
+            svg.append('<polyline class="frontier" points="{}"/>'.format(
+                " ".join("{:.2f},{:.2f}".format(*xy(point)) for point in frontier)
+            ))
+        for point in points:
+            x, y = xy(point)
+            svg.append('<circle class="point" cx="{:.2f}" cy="{:.2f}" r="5"><title>{}: F1 {:.2f}, {} {:.6g}</title></circle>'.format(
+                x, y, html.escape(point["system"]), point["f1"], html.escape(x_label), point[key]
+            ))
+            svg.append('<text x="{:.2f}" y="{:.2f}" font-size="10">{}</text>'.format(
+                min(x + 7, right - 85), max(y - 7, top + 10), html.escape(point["system"])
+            ))
+    svg.append("</svg>")
+    (output_root / "pareto_quality_efficiency.svg").write_text(
+        "\n".join(svg) + "\n", encoding="utf-8"
+    )
 
 
 def _comparison_examples(label, selected, questions, baseline, candidate):
@@ -487,7 +794,9 @@ def _bootstrap_delta(baseline, candidate, qids, samples=10000):
     return mean, estimates[int(samples * 0.025)], estimates[int(samples * 0.975) - 1]
 
 
-def _write_environment(output_root, manifest_file, manifest, systems):
+def _write_environment(
+    output_root, manifest_file, manifest, systems, *, query_source=None, split=None
+):
     versions = {}
     for module_name in ["numpy", "torch", "transformers", "pydantic", "langgraph"]:
         try:
@@ -534,14 +843,29 @@ def _write_environment(output_root, manifest_file, manifest, systems):
                     model_snapshots.append(
                         _local_model_snapshot(system["name"], task_name, key, task[key])
                     )
-    input_keys = ["queryFilePath", "qrelPath", "goldPath", "trecEvalPath"]
+    input_keys = ["qrelPath", "goldPath", "trecEvalPath"]
+    resolved_query_source = (
+        Path(query_source).expanduser().resolve()
+        if query_source is not None
+        else _path(base, manifest["queryFilePath"])
+    )
     snapshot = {
         "manifest_path": str(manifest_file),
         "manifest_sha256": _sha256(manifest_file),
         "limit": len((output_root / "queries.qry").read_text(encoding="utf-8").splitlines()),
+        "split": split,
         "inputs": {
-            key: {"path": str(_path(base, manifest[key])), "sha256": _sha256(_path(base, manifest[key]))}
-            for key in input_keys
+            "queryFilePath": {
+                "path": str(resolved_query_source),
+                "sha256": _sha256(resolved_query_source),
+            },
+            **{
+                key: {
+                    "path": str(_path(base, manifest[key])),
+                    "sha256": _sha256(_path(base, manifest[key])),
+                }
+                for key in input_keys
+            },
         },
         "system_configs": config_snapshots,
         "models": model_snapshots,

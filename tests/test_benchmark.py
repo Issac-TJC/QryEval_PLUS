@@ -1,6 +1,37 @@
 import json
 
 from conftest import PROJECT_ROOT
+
+
+def test_triviaqa318_protocol_lock_matches_frozen_code_and_configs():
+    from qryeval_plus.benchmark import _verify_protocol_lock
+
+    manifest_path = PROJECT_ROOT / "configs" / "benchmarks" / "triviaqa318.json"
+    manifest = json.loads(manifest_path.read_text())
+    _verify_protocol_lock(manifest_path.parent, manifest)
+
+
+def test_publish_artifacts_redacts_local_paths_and_writes_checksums(tmp_path):
+    from qryeval_plus.benchmark import publish_artifacts
+
+    source = tmp_path / "output"
+    source.mkdir()
+    for name in (
+        "HW5_Agent_Comparison.csv", "HW5_AGENT_REPORT.md",
+        "per_question_comparison.csv", "error_analysis.csv",
+    ):
+        (source / name).write_text("evidence\n")
+    (source / "environment.json").write_text(json.dumps({"git": {"root": "/Users/test/repo"}}))
+    (source / "benchmark_snapshot.json").write_text(json.dumps({"path": "/private/data/gold.json"}))
+    system = source / "fixed"
+    system.mkdir()
+    (system / "metrics.json").write_text(json.dumps({"f1": 1.0}))
+
+    target = publish_artifacts(source, tmp_path / "release")
+    assert (target / "artifact_checksums.sha256").is_file()
+    environment = json.loads((target / "environment.json").read_text())
+    assert environment["git"]["root"] == "<LOCAL_ASSET>/repo"
+    assert json.loads((target / "system_metrics.json").read_text())["fixed"]["f1"] == 1.0
 from qryeval_plus.benchmark import (
     _filter_qrels,
     _trec_metrics,
@@ -61,8 +92,13 @@ def test_complete_bm25_run_reproduces_historical_retrieval_metrics(tmp_path):
 
 def test_benchmark_runner_writes_comparison_report_and_snapshots(tmp_path, monkeypatch):
     reference = PROJECT_ROOT / "benchmarks" / "hw5" / "reference"
+    split_queries = tmp_path / "split-dev.qry"
+    split_queries.write_text(
+        (PROJECT_ROOT / "datasets" / "triviaqa" / "verified_wikipedia_dev.qry").read_text()
+    )
     manifest = {
         "queryFilePath": str(PROJECT_ROOT / "datasets" / "triviaqa" / "verified_wikipedia_dev.qry"),
+        "splits": {"dev": str(split_queries)},
         "qrelPath": str(PROJECT_ROOT / "data" / "evaluation" / "triviaqa" / "verified-wikipedia-dev.qrel"),
         "goldPath": str(PROJECT_ROOT / "data" / "evaluation" / "triviaqa" / "verified-wikipedia-dev.json"),
         "trecEvalPath": str(PROJECT_ROOT / "data" / "tools" / "trec_eval"),
@@ -129,15 +165,22 @@ def test_benchmark_runner_writes_comparison_report_and_snapshots(tmp_path, monke
         return {}
 
     monkeypatch.setattr("qryeval_plus.benchmark.run_pipeline", fake_pipeline)
-    output = run_benchmark(str(manifest_path), limit=5)
+    output = run_benchmark(str(manifest_path), split="dev", limit=5)
 
     assert (output / "HW5_Agent_Comparison.csv").is_file()
     assert (output / "HW5_AGENT_REPORT.md").is_file()
     assert (output / "per_question_comparison.csv").is_file()
     assert (output / "environment.json").is_file()
+    assert (output / "pareto_points.csv").is_file()
+    assert "<svg" in (output / "pareto_quality_efficiency.svg").read_text()
     snapshot = json.loads((output / "benchmark_snapshot.json").read_text())
     assert snapshot["limit"] == 5
+    assert snapshot["split"] == "dev"
+    assert snapshot["inputs"]["queryFilePath"]["path"] == str(split_queries)
     assert snapshot["historical_reference"]["sha256"] == "97d3f136d4198ede2bcd31509156029e813eade98ceae833d5b579ea284b0dda"
     agent_metrics = json.loads((output / "agent" / "metrics.json").read_text())
     assert agent_metrics["avg_model_calls"] == 3
     assert agent_metrics["tool_usage"]["search_bm25"] == 5
+    fixed_metrics = json.loads((output / "fixed" / "metrics.json").read_text())
+    assert fixed_metrics["avg_model_calls"] == 3
+    assert fixed_metrics["avg_total_tokens"] == 10
