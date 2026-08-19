@@ -1,0 +1,16 @@
+{
+  "indexPath": "../../data/indexes/clueweb22-lucene",
+  "queryFilePath": "../../datasets/triviaqa/protocol/dev.qry",
+  "task_1:ranker": {"type": "BM25", "outputLength": 1000, "BM25:k_1": 1.2, "BM25:b": 0.75},
+  "task_2:output": {"type": "trec_eval", "outputPath": "../../outputs/triviaqa318/fixed_bm25.run", "outputLength": 1000},
+  "task_3:agent": {
+    "type": "rag", "agentDepth": 5,
+    "rag:provider": "deepseek", "rag:baseUrl": "https://api.deepseek.com", "rag:model": "deepseek-v4-flash",
+    "rag:apiKeyEnv": "DEEPSEEK_API_KEY", "rag:timeoutSeconds": 120, "rag:maxRetries": 2,
+    "rag:maxTokens": 64, "rag:temperature": 0, "rag:thinking": false, "rag:fallback": false,
+    "rag:budgetMaxRequests": 2000, "rag:budgetMaxTokens": 10000000,
+    "rag:dense:modelPath": "../../data/models/co-condenser-marco-retriever",
+    "rag:psgLen": 150, "rag:psgStride": 140, "rag:psgCnt": 6, "rag:maxTitleLength": 15, "rag:prompt": 1
+  },
+  "task_4:output": {"type": "triviaqa_evaluation", "outputPath": "../../outputs/triviaqa318/fixed_bm25.answers.json", "metadataPath": "../../outputs/triviaqa318/fixed_bm25.llm.json"}
+}

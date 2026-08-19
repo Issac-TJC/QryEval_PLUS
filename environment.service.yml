@@ -1,0 +1,9 @@
+name: qryeval-service
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - openjdk=25
+  - faiss-cpu=1.8
+  - numpy>=1.23,<2
+  - pip

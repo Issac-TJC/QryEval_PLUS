@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import importlib.util
+import json
 import os
 import platform
 import sys
@@ -43,8 +45,43 @@ def _build_parser() -> argparse.ArgumentParser:
         "benchmark", help="Run a reproducible fixed-vs-agent benchmark."
     )
     benchmark.add_argument("manifest")
-    benchmark.add_argument("--limit", type=int, choices=(5, 40), default=5)
+    benchmark.add_argument("--limit", type=int, default=None)
+    benchmark.add_argument("--split", choices=("dev", "test", "all"))
     benchmark.add_argument("--resume", action="store_true")
+    benchmark.add_argument("--dry-run-budget", action="store_true")
+    benchmark.add_argument("--publish-to", help="Publish scrubbed lightweight evidence after a completed run.")
+
+    corpus = subparsers.add_parser("corpus", help="Inspect mounted corpus assets.")
+    corpus_sub = corpus.add_subparsers(dest="corpus_command", required=True)
+    inspect = corpus_sub.add_parser("inspect", help="Write Lucene/FAISS corpus metadata.")
+    inspect.add_argument("--config", required=True)
+    inspect.add_argument("--output")
+
+    dataset = subparsers.add_parser("dataset", help="Prepare or validate dataset protocols.")
+    dataset_sub = dataset.add_subparsers(dest="dataset_command", required=True)
+    prepare = dataset_sub.add_parser("prepare", help="Build the frozen TriviaQA 40/278 split.")
+    prepare.add_argument("--gold", required=True)
+    prepare.add_argument("--dev-queries", required=True)
+    prepare.add_argument("--output-dir", required=True)
+    check = dataset_sub.add_parser("validate", help="Validate a frozen TriviaQA split manifest.")
+    check.add_argument("--manifest", required=True)
+    check.add_argument("--gold", required=True)
+    check.add_argument("--qrels", required=True)
+
+    serve = subparsers.add_parser("serve", help="Run the local QryEval HTTP service.")
+    serve.add_argument("--config", required=True)
+    serve.add_argument("--host")
+    serve.add_argument("--port", type=int)
+
+    loadtest = subparsers.add_parser("loadtest", help="Run a bounded HTTP load test.")
+    loadtest.add_argument("--url", default="http://127.0.0.1:8000")
+    loadtest.add_argument("--questions", required=True)
+    loadtest.add_argument("--concurrency", type=int, nargs="+", default=[1, 4, 8, 16])
+    loadtest.add_argument("--requests", type=int, default=200)
+    loadtest.add_argument("--policy", choices=("fixed_bm25", "adaptive_rewrite"), default="adaptive_rewrite")
+    loadtest.add_argument("--token-env")
+    loadtest.add_argument("--output")
+    loadtest.add_argument("--cache-bust", action="store_true", help="Append a unique suffix to measure uncached infrastructure throughput.")
     return parser
 
 
@@ -208,13 +245,69 @@ def main(argv=None) -> None:
             code = _doctor_command(args.config)
         elif args.command == "demo":
             code = _demo_command(args.config, args.questions, args.dry_run)
-        else:
-            from qryeval_plus.benchmark import run_benchmark
-            output = run_benchmark(
-                args.manifest, limit=args.limit, resume=args.resume
-            )
-            print("Benchmark artifacts: {}".format(output))
+        elif args.command == "benchmark":
+            from qryeval_plus.benchmark import estimate_budget, publish_artifacts, run_benchmark
+            limit = args.limit if (args.limit is not None or args.split) else 5
+            if args.dry_run_budget:
+                print(json.dumps(estimate_budget(args.manifest, split=args.split, limit=limit), indent=2))
+            else:
+                output = run_benchmark(
+                    args.manifest, limit=limit, split=args.split, resume=args.resume
+                )
+                print("Benchmark artifacts: {}".format(output))
+                if args.publish_to:
+                    print("Published evidence: {}".format(publish_artifacts(output, args.publish_to)))
             code = 0
+        elif args.command == "corpus":
+            from qryeval_plus.protocol import inspect_corpus
+            payload = inspect_corpus(args.config)
+            rendered = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+            if args.output:
+                Path(args.output).expanduser().resolve().write_text(rendered, encoding="utf-8")
+                print("Corpus manifest: {}".format(Path(args.output).expanduser().resolve()))
+            else:
+                print(rendered, end="")
+            code = 0
+        elif args.command == "dataset":
+            from qryeval_plus.protocol import validate_split_manifest, write_split_files
+            if args.dataset_command == "prepare":
+                payload = write_split_files(args.gold, args.dev_queries, args.output_dir)
+            else:
+                payload = validate_split_manifest(args.manifest, args.gold, args.qrels)
+            print(json.dumps(payload, indent=2, sort_keys=True))
+            code = 0
+        elif args.command == "serve":
+            if sys.version_info < (3, 11):
+                raise RuntimeError("The service requires Python 3.11 or newer.")
+            import uvicorn
+            from qryeval_plus.service import create_app
+            settings = json.loads(Path(args.config).read_text(encoding="utf-8"))
+            host = args.host or settings.get("host", "127.0.0.1")
+            port = args.port or int(settings.get("port", 8000))
+            uvicorn.run(create_app(args.config), host=host, port=port, workers=1)
+            code = 0
+        elif args.command == "loadtest":
+            from qryeval_plus.loadtest import read_questions, run_load_test
+            questions = read_questions(args.questions)
+            token = os.environ.get(args.token_env) if args.token_env else None
+            reports = [
+                asyncio.run(run_load_test(
+                    url=args.url, questions=questions, concurrency=value,
+                    requests=args.requests, policy=args.policy, token=token,
+                    cache_bust=args.cache_bust,
+                    cache_bust_label="c{}".format(value),
+                ))
+                for value in args.concurrency
+            ]
+            rendered = json.dumps({"runs": reports}, indent=2, sort_keys=True) + "\n"
+            if args.output:
+                Path(args.output).expanduser().resolve().write_text(rendered, encoding="utf-8")
+                print("Load-test report: {}".format(Path(args.output).expanduser().resolve()))
+            else:
+                print(rendered, end="")
+            code = 0
+        else:
+            raise ConfigError("Unsupported command: {}".format(args.command))
     except (ConfigError, OSError, RuntimeError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         code = 1

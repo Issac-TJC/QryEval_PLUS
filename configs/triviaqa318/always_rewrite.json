@@ -1,0 +1,16 @@
+{
+  "indexPath": "../../data/indexes/clueweb22-lucene",
+  "queryFilePath": "../../datasets/triviaqa/protocol/dev.qry",
+  "task_1:agent": {
+    "type": "rewrite_rag", "rewrite:policy": "always", "rewrite:maxTokens": 96,
+    "rag:provider": "deepseek", "rag:baseUrl": "https://api.deepseek.com", "rag:model": "deepseek-v4-flash",
+    "rag:apiKeyEnv": "DEEPSEEK_API_KEY", "rag:timeoutSeconds": 120, "rag:maxRetries": 2,
+    "rag:maxTokens": 64, "rag:temperature": 0, "rag:thinking": false,
+    "rag:budgetMaxRequests": 2000, "rag:budgetMaxTokens": 10000000,
+    "rag:dense:modelPath": "../../data/models/co-condenser-marco-retriever",
+    "rag:psgLen": 150, "rag:psgStride": 140, "rag:psgCnt": 6, "rag:maxTitleLength": 15, "rag:prompt": 1,
+    "agent:retrievalDepth": 1000, "agent:maxContextDocs": 5, "agentDepth": 5
+  },
+  "task_2:output": {"type": "trec_eval", "outputPath": "../../outputs/triviaqa318/always_rewrite.run", "outputLength": 1000},
+  "task_3:output": {"type": "triviaqa_evaluation", "outputPath": "../../outputs/triviaqa318/always_rewrite.answers.json", "metadataPath": "../../outputs/triviaqa318/always_rewrite.llm.json"}
+}

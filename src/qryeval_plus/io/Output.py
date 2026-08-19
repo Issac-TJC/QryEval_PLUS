@@ -76,6 +76,22 @@ class Output:
                             {'agent': batch[qid]['agent']}
                             if 'agent' in batch[qid] else {}
                         ),
+                        **(
+                            {'rewrite': batch[qid]['rewrite']}
+                            if 'rewrite' in batch[qid] else {}
+                        ),
+                        **(
+                            {'latency': batch[qid]['latency']}
+                            if 'latency' in batch[qid] else {}
+                        ),
+                        **(
+                            {'grounding_status': batch[qid]['grounding_status']}
+                            if 'grounding_status' in batch[qid] else {}
+                        ),
+                        **(
+                            {'citations': batch[qid]['citations']}
+                            if 'citations' in batch[qid] else {}
+                        ),
                     }
                     for qid in batch
                 }

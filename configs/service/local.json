@@ -1,0 +1,14 @@
+{
+  "experimentConfig": "../triviaqa318/adaptive_rewrite.json",
+  "host": "127.0.0.1",
+  "port": 8000,
+  "queueCapacity": 32,
+  "requestTimeoutSeconds": 180,
+  "corpusVersion": "f135e18070c5ebbb",
+  "expectedDocuments": 273140,
+  "inputPricePerMillionUsd": 0.14,
+  "outputPricePerMillionUsd": 0.28,
+  "responseCachePath": "../../outputs/service/responses.sqlite3",
+  "llmCachePath": "../../outputs/service/llm.sqlite3",
+  "authTokenEnv": ""
+}

@@ -1,0 +1,109 @@
+{
+  "historical_reference": {},
+  "inputs": {
+    "goldPath": {
+      "path": "<LOCAL_ASSET>/verified-wikipedia-dev.json",
+      "sha256": "20e07c92d038d52e238d73a756b0dedafe761894f29c6c0bb397e4058ce93fd8"
+    },
+    "qrelPath": {
+      "path": "<LOCAL_ASSET>/verified-wikipedia-dev.qrel",
+      "sha256": "7d98db4fcf15b5cbf46dc73b6422acfd6230917ce563b892e5519559d96aeda1"
+    },
+    "queryFilePath": {
+      "path": "<LOCAL_ASSET>/test.qry",
+      "sha256": "90322cec9c881ebbbd18ffeaa7e63681eee75e33af1ca1f44c6a095c7ea024d7"
+    },
+    "trecEvalPath": {
+      "path": "<LOCAL_ASSET>/trec_eval",
+      "sha256": "87c30dd14174976155aa1cc023d8e940a0481daad134fe6c2aeb364aaa79497c"
+    }
+  },
+  "limit": 278,
+  "manifest_path": "<LOCAL_ASSET>/triviaqa318.json",
+  "manifest_sha256": "1a5c092226832a8206dda81aca4393e3b774e79a3efa76bb5880807152e7f2df",
+  "models": [
+    {
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "system": "fixed_bm25",
+      "task": "task_3:agent",
+      "temperature": 0,
+      "thinking": false
+    },
+    {
+      "config_sha256": "c6efdf8413e7e5205765f35833a6013120ff7216d9a52890bc5a3896f55c7cee",
+      "key": "rag:dense:modelPath",
+      "path": "<LOCAL_ASSET>/co-condenser-marco-retriever",
+      "system": "fixed_bm25",
+      "task": "task_3:agent"
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "system": "bm25_prf",
+      "task": "task_5:agent",
+      "temperature": 0,
+      "thinking": false
+    },
+    {
+      "config_sha256": "c6efdf8413e7e5205765f35833a6013120ff7216d9a52890bc5a3896f55c7cee",
+      "key": "rag:dense:modelPath",
+      "path": "<LOCAL_ASSET>/co-condenser-marco-retriever",
+      "system": "bm25_prf",
+      "task": "task_5:agent"
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "system": "always_rewrite",
+      "task": "task_1:agent",
+      "temperature": 0,
+      "thinking": false
+    },
+    {
+      "config_sha256": "c6efdf8413e7e5205765f35833a6013120ff7216d9a52890bc5a3896f55c7cee",
+      "key": "rag:dense:modelPath",
+      "path": "<LOCAL_ASSET>/co-condenser-marco-retriever",
+      "system": "always_rewrite",
+      "task": "task_1:agent"
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "system": "adaptive_rewrite",
+      "task": "task_1:agent",
+      "temperature": 0,
+      "thinking": false
+    },
+    {
+      "config_sha256": "c6efdf8413e7e5205765f35833a6013120ff7216d9a52890bc5a3896f55c7cee",
+      "key": "rag:dense:modelPath",
+      "path": "<LOCAL_ASSET>/co-condenser-marco-retriever",
+      "system": "adaptive_rewrite",
+      "task": "task_1:agent"
+    }
+  ],
+  "split": "test",
+  "system_configs": [
+    {
+      "path": "<LOCAL_ASSET>/fixed_bm25.json",
+      "sha256": "56411593154e0371e4e5e33f4b555a1cf14e50d66ea00c4fe7a6c7aa134e264a",
+      "system": "fixed_bm25"
+    },
+    {
+      "path": "<LOCAL_ASSET>/bm25_prf.json",
+      "sha256": "5ccd26f68537026a880cfbb2269996403f01230d7ec8d3ff42d7426c78365144",
+      "system": "bm25_prf"
+    },
+    {
+      "path": "<LOCAL_ASSET>/always_rewrite.json",
+      "sha256": "6a8ced5330bf3dcb235f1d5c8e3349c7de60b67ea6af4152210bc8ea062afa4a",
+      "system": "always_rewrite"
+    },
+    {
+      "path": "<LOCAL_ASSET>/adaptive_rewrite.json",
+      "sha256": "e8d2ae8767e5e19a84c6212c114a232d7034783c36f1009e4c19d384ae24dac7",
+      "system": "adaptive_rewrite"
+    }
+  ]
+}

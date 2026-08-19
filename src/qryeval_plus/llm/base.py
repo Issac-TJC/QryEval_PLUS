@@ -32,6 +32,8 @@ class LLMResponse:
     tool_calls: List[LLMToolCall] = field(default_factory=list)
     finish_reason: str = ""
     reasoning_content: str = ""
+    cache_hit: bool = False
+    estimated_cost_usd: float = 0.0
 
 
 class LLMProvider:

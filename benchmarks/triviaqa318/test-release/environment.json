@@ -1,0 +1,17 @@
+{
+  "created_at_utc": "2026-08-19T11:01:40.369608+00:00",
+  "git": {
+    "commit": "bbc59161441f79ef798027eab03b4785c66111ca",
+    "dirty": true,
+    "root": "<LOCAL_ASSET>/QryEval_PLUS"
+  },
+  "packages": {
+    "langgraph": "unknown",
+    "numpy": "1.26.4",
+    "pydantic": "2.13.4",
+    "torch": "2.0.1",
+    "transformers": "4.40.2"
+  },
+  "platform": "macOS-15.7.7-arm64-arm-64bit",
+  "python": "3.11.15 | packaged by conda-forge | (main, Aug 11 2026, 10:24:21) [Clang 19.1.7 ]"
+}

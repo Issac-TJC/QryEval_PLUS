@@ -1,0 +1,23 @@
+{
+  "protocol": "triviaqa-318-v1",
+  "development_policy": "The previously analyzed 40 questions are development-only.",
+  "test_policy": "The remaining 278 qids are a locked test set.",
+  "files": {
+    "all": {
+      "path": "all.qry",
+      "questions": 318,
+      "sha256": "8130b28f7872ac59789ddaf456eaca27b8da8d4fa53d0a763b9480e793fa9f21"
+    },
+    "dev": {
+      "path": "dev.qry",
+      "questions": 40,
+      "sha256": "76ca23ef58cb14c36c739ccd26ebda829483f5be309680a8ce9274329033ae23"
+    },
+    "test": {
+      "path": "test.qry",
+      "questions": 278,
+      "sha256": "90322cec9c881ebbbd18ffeaa7e63681eee75e33af1ca1f44c6a095c7ea024d7"
+    }
+  },
+  "gold_sha256": "20e07c92d038d52e238d73a756b0dedafe761894f29c6c0bb397e4058ce93fd8"
+}

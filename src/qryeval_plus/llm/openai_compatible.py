@@ -114,7 +114,7 @@ class OpenAICompatibleProvider(LLMProvider):
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "User-Agent": "qryeval-plus/0.3",
+            "User-Agent": "qryeval-plus/0.4",
         }
         if api_key:
             headers["Authorization"] = "Bearer " + api_key

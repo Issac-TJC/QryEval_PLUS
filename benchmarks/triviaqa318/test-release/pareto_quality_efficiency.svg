@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<style>text{font-family:Arial,sans-serif;fill:#172033}.axis{stroke:#64748b;stroke-width:1}.frontier{fill:none;stroke:#0f766e;stroke-width:2}.point{fill:#2563eb;stroke:#fff;stroke-width:2}</style>
+<text x="217.0" y="24" font-size="16" font-weight="bold" text-anchor="middle">Quality vs p95 recorded latency (s)</text>
+<line class="axis" x1="58" y1="342" x2="376" y2="342"/>
+<line class="axis" x1="58" y1="42" x2="58" y2="342"/>
+<text x="217.0" y="382" font-size="12" text-anchor="middle">p95 recorded latency (s)</text>
+<text x="16" y="192.0" font-size="12" text-anchor="middle" transform="rotate(-90 16 192.0)">answer F1</text>
+<text x="52" y="46" font-size="10" text-anchor="end">89.2</text>
+<text x="52" y="346" font-size="10" text-anchor="end">77.4</text>
+<text x="376" y="358" font-size="10" text-anchor="end">16.07</text>
+<polyline class="frontier" points="82.37,214.82 87.46,195.82 332.19,169.18"/>
+<circle class="point" cx="82.37" cy="214.82" r="5"><title>Fixed BM25: F1 82.38, p95 recorded latency (s) 1.23149</title></circle>
+<text x="89.37" y="207.82" font-size="10">Fixed BM25</text>
+<circle class="point" cx="87.46" cy="195.82" r="5"><title>BM25 + RM3 PRF: F1 83.13, p95 recorded latency (s) 1.48898</title></circle>
+<text x="94.46" y="188.82" font-size="10">BM25 + RM3 PRF</text>
+<circle class="point" cx="376.00" cy="169.40" r="5"><title>Always LLM Rewrite: F1 84.17, p95 recorded latency (s) 16.0706</title></circle>
+<text x="291.00" y="162.40" font-size="10">Always LLM Rewrite</text>
+<circle class="point" cx="332.19" cy="169.18" r="5"><title>Adaptive LLM Rewrite: F1 84.18, p95 recorded latency (s) 13.8567</title></circle>
+<text x="291.00" y="162.18" font-size="10">Adaptive LLM Rewrite</text>
+<text x="617.0" y="24" font-size="16" font-weight="bold" text-anchor="middle">Quality vs tokens / query</text>
+<line class="axis" x1="458" y1="342" x2="776" y2="342"/>
+<line class="axis" x1="458" y1="42" x2="458" y2="342"/>
+<text x="617.0" y="382" font-size="12" text-anchor="middle">tokens / query</text>
+<text x="416" y="192.0" font-size="12" text-anchor="middle" transform="rotate(-90 416 192.0)">answer F1</text>
+<text x="452" y="46" font-size="10" text-anchor="end">89.2</text>
+<text x="452" y="346" font-size="10" text-anchor="end">77.4</text>
+<text x="776" y="358" font-size="10" text-anchor="end">3072</text>
+<polyline class="frontier" points="586.61,214.82 587.17,195.82 774.19,169.40 776.00,169.18"/>
+<circle class="point" cx="586.61" cy="214.82" r="5"><title>Fixed BM25: F1 82.38, tokens / query 1242.58</title></circle>
+<text x="593.61" y="207.82" font-size="10">Fixed BM25</text>
+<circle class="point" cx="587.17" cy="195.82" r="5"><title>BM25 + RM3 PRF: F1 83.13, tokens / query 1248.01</title></circle>
+<text x="594.17" y="188.82" font-size="10">BM25 + RM3 PRF</text>
+<circle class="point" cx="774.19" cy="169.40" r="5"><title>Always LLM Rewrite: F1 84.17, tokens / query 3054.88</title></circle>
+<text x="691.00" y="162.40" font-size="10">Always LLM Rewrite</text>
+<circle class="point" cx="776.00" cy="169.18" r="5"><title>Adaptive LLM Rewrite: F1 84.18, tokens / query 3072.41</title></circle>
+<text x="691.00" y="162.18" font-size="10">Adaptive LLM Rewrite</text>
+<text x="1017.0" y="24" font-size="16" font-weight="bold" text-anchor="middle">Quality vs estimated USD / query</text>
+<line class="axis" x1="858" y1="342" x2="1176" y2="342"/>
+<line class="axis" x1="858" y1="42" x2="858" y2="342"/>
+<text x="1017.0" y="382" font-size="12" text-anchor="middle">estimated USD / query</text>
+<text x="816" y="192.0" font-size="12" text-anchor="middle" transform="rotate(-90 816 192.0)">answer F1</text>
+<text x="852" y="46" font-size="10" text-anchor="end">89.2</text>
+<text x="852" y="346" font-size="10" text-anchor="end">77.4</text>
+<text x="1176" y="358" font-size="10" text-anchor="end">0.0004348</text>
+<polyline class="frontier" points="968.54,195.82 1072.79,169.18"/>
+<circle class="point" cx="985.73" cy="214.82" r="5"><title>Fixed BM25: F1 82.38, estimated USD / query 0.000174633</title></circle>
+<text x="992.73" y="207.82" font-size="10">Fixed BM25</text>
+<circle class="point" cx="968.54" cy="195.82" r="5"><title>BM25 + RM3 PRF: F1 83.13, estimated USD / query 0.000151129</title></circle>
+<text x="975.54" y="188.82" font-size="10">BM25 + RM3 PRF</text>
+<circle class="point" cx="1176.00" cy="169.40" r="5"><title>Always LLM Rewrite: F1 84.17, estimated USD / query 0.00043476</title></circle>
+<text x="1091.00" y="162.40" font-size="10">Always LLM Rewrite</text>
+<circle class="point" cx="1072.79" cy="169.18" r="5"><title>Adaptive LLM Rewrite: F1 84.18, estimated USD / query 0.000293649</title></circle>
+<text x="1079.79" y="162.18" font-size="10">Adaptive LLM Rewrite</text>
+</svg>

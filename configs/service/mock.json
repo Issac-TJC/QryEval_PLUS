@@ -1,0 +1,17 @@
+{
+  "experimentConfig": "../triviaqa318/adaptive_rewrite.json",
+  "mock": true,
+  "mockDelaySeconds": 0.01,
+  "fixtureCorpusPath": "../../datasets/fixtures/corpus.jsonl",
+  "host": "127.0.0.1",
+  "port": 8010,
+  "queueCapacity": 32,
+  "requestTimeoutSeconds": 5,
+  "corpusVersion": "fixture-v1",
+  "expectedDocuments": 3,
+  "inputPricePerMillionUsd": 0.0,
+  "outputPricePerMillionUsd": 0.0,
+  "responseCachePath": "../../outputs/service/mock-responses.sqlite3",
+  "llmCachePath": "../../outputs/service/mock-llm.sqlite3",
+  "authTokenEnv": ""
+}

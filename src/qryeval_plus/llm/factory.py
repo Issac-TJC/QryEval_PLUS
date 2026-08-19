@@ -5,12 +5,13 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from qryeval_plus.llm.openai_compatible import OpenAICompatibleProvider
+from qryeval_plus.llm.cached import CachedBudgetProvider
 
 
 SUPPORTED_PROVIDERS = {"deepseek", "openai-compatible", "openai_compatible"}
 
 
-def create_provider(parameters: Dict[str, Any]) -> OpenAICompatibleProvider:
+def create_provider(parameters: Dict[str, Any]):
     provider = str(parameters.get("rag:provider", "")).strip().lower()
     if not provider:
         raise ValueError("Missing parameter 'rag:provider'.")
@@ -21,7 +22,7 @@ def create_provider(parameters: Dict[str, Any]) -> OpenAICompatibleProvider:
         )
 
     if provider == "deepseek":
-        return OpenAICompatibleProvider(
+        instance = OpenAICompatibleProvider(
             name="deepseek",
             base_url=parameters.get("rag:baseUrl", "https://api.deepseek.com"),
             model=parameters.get("rag:model", "deepseek-v4-flash"),
@@ -40,8 +41,9 @@ def create_provider(parameters: Dict[str, Any]) -> OpenAICompatibleProvider:
                 }
             },
         )
+        return _with_runtime_controls(instance, parameters)
 
-    return OpenAICompatibleProvider(
+    instance = OpenAICompatibleProvider(
         name="openai-compatible",
         base_url=parameters.get("rag:baseUrl"),
         model=parameters.get("rag:model"),
@@ -55,6 +57,7 @@ def create_provider(parameters: Dict[str, Any]) -> OpenAICompatibleProvider:
         max_tokens=parameters.get("rag:maxTokens"),
         temperature=parameters.get("rag:temperature"),
     )
+    return _with_runtime_controls(instance, parameters)
 
 
 def provider_summary(parameters: Dict[str, Any]) -> Dict[str, Any]:
@@ -67,6 +70,28 @@ def provider_summary(parameters: Dict[str, Any]) -> Dict[str, Any]:
         "api_key_env": instance.api_key_env,
         "api_key_required": instance.api_key_required,
     }
+
+
+def _with_runtime_controls(instance, parameters):
+    cache_path = parameters.get("rag:cachePath")
+    controls_enabled = bool(cache_path) or any(
+        key in parameters
+        for key in (
+            "rag:budgetMaxRequests", "rag:budgetMaxTokens",
+            "rag:inputPricePerMillion", "rag:outputPricePerMillion",
+        )
+    )
+    if not controls_enabled:
+        return instance
+    return CachedBudgetProvider(
+        instance,
+        cache_path=str(cache_path) if cache_path else None,
+        namespace=str(parameters.get("rag:cacheNamespace", "default")),
+        max_requests=int(parameters.get("rag:budgetMaxRequests", 2000)),
+        max_tokens=int(parameters.get("rag:budgetMaxTokens", 10_000_000)),
+        input_price_per_million=float(parameters.get("rag:inputPricePerMillion", 0)),
+        output_price_per_million=float(parameters.get("rag:outputPricePerMillion", 0)),
+    )
 
 
 def _as_bool(value: Any, label: str) -> bool:

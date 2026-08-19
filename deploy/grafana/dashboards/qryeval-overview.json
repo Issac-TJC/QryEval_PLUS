@@ -1,0 +1,74 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {
+      "title": "Request rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(rate(qryeval_http_requests_total[1m])) by (status)", "legendFormat": "HTTP {{status}}"}]
+    },
+    {
+      "title": "HTTP latency quantiles",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum(rate(qryeval_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, sum(rate(qryeval_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95"},
+        {"expr": "histogram_quantile(0.99, sum(rate(qryeval_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99"}
+      ]
+    },
+    {
+      "title": "Queue depth",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "targets": [{"expr": "qryeval_inference_queue_depth", "legendFormat": "queued"}]
+    },
+    {
+      "title": "Cache outcomes",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "sum(rate(qryeval_cache_results_total[5m])) by (result)", "legendFormat": "{{result}}"}]
+    },
+    {
+      "title": "Grounding status",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "sum(rate(qryeval_grounding_results_total[5m])) by (status)", "legendFormat": "{{status}}"}]
+    },
+    {
+      "title": "Inference stage p95",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(qryeval_inference_duration_seconds_bucket[5m])) by (le, stage))", "legendFormat": "{{stage}}"}]
+    },
+    {
+      "title": "LLM tokens and estimated cost",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+      "targets": [
+        {"expr": "sum(rate(qryeval_llm_tokens_total[5m])) by (kind)", "legendFormat": "tokens {{kind}}"},
+        {"expr": "rate(qryeval_llm_estimated_cost_usd_total[5m])", "legendFormat": "USD/s"}
+      ]
+    },
+    {
+      "title": "Controlled errors",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+      "targets": [{"expr": "sum(rate(qryeval_service_errors_total[5m])) by (type)", "legendFormat": "{{type}}"}]
+    },
+    {
+      "title": "Stop reasons",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+      "targets": [{"expr": "sum(rate(qryeval_stop_reasons_total[5m])) by (reason)", "legendFormat": "{{reason}}"}]
+    }
+  ],
+  "schemaVersion": 41,
+  "tags": ["qryeval", "rag"],
+  "templating": {"list": []},
+  "time": {"from": "now-30m", "to": "now"},
+  "title": "QryEval_PLUS Overview",
+  "uid": "qryeval-overview",
+  "version": 1
+}
